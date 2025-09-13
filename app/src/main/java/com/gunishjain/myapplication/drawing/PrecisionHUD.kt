@@ -1,0 +1,74 @@
+package com.gunishjain.myapplication.drawing
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.gunishjain.myapplication.drawing.tool.RulerTool
+
+/**
+ * A composable that displays precision measurements for the ruler tool
+ */
+@Composable
+fun PrecisionHUD(
+    rulerTool: RulerTool?,
+    isVisible: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    if (!isVisible || rulerTool == null) return
+    
+    val distance = rulerTool.calculateDistance()
+    val isHorizontalOrVertical = rulerTool.isHorizontalOrVertical()
+    val angle = rulerTool.calculateAngle()
+    
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0x99000000))
+                .padding(12.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                text = "Distance: ${String.format("%.1f", distance)} px",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "Angle: ${String.format("%.1f", angle)}°",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            if (isHorizontalOrVertical) {
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = if (angle % 180 < 45 || angle % 180 > 135) "Horizontal" else "Vertical",
+                    color = Color.Green,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}

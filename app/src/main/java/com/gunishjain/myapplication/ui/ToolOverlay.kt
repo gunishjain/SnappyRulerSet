@@ -54,7 +54,10 @@ fun ToolOverlay(
                     ToolChip(
                         tool = tool,
                         isSelected = tool == currentTool,
-                        onClick = { onToolSelected(tool) }
+                        onClick = { 
+                            println("DEBUG: ToolOverlay - Tool selected: ${tool.name}")
+                            onToolSelected(tool) 
+                        }
                     )
                 }
             }

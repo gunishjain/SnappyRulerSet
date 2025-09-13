@@ -11,14 +11,19 @@ import androidx.compose.material.icons.filled.Clear
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
 import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.data.DrawingState
-import com.gunishjain.myapplication.data.UndoRedoManager
 import com.gunishjain.myapplication.ui.DrawingCanvas
 import com.gunishjain.myapplication.ui.ToolOverlay
 import com.gunishjain.myapplication.ui.theme.SnappyRulerSetTheme
+import com.gunishjain.myapplication.utils.HapticFeedbackUtil
+import com.gunishjain.myapplication.viewmodel.DrawingViewModel
+import kotlinx.coroutines.flow.collect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,81 +40,23 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SnappyRulerSetApp() {
-    var drawingState by remember { mutableStateOf(DrawingState()) }
-    val undoRedoManager = remember { UndoRedoManager() }
+    val viewModel: DrawingViewModel = remember { DrawingViewModel() }
+    val drawingState by viewModel.drawingState
     
-    fun handleAction(action: DrawingAction) {
-        drawingState = when (action) {
-            is DrawingAction.SetTool -> {
-                drawingState.copy(currentTool = action.tool)
-            }
-            is DrawingAction.AddElement -> {
-                val newElements = drawingState.elements + action.element
-                undoRedoManager.saveState(newElements)
-                drawingState.copy(
-                    elements = newElements,
-                    canUndo = undoRedoManager.canUndo(),
-                    canRedo = undoRedoManager.canRedo()
-                )
-            }
-            is DrawingAction.StartDrawing -> {
-                drawingState.copy(isDrawing = true)
-            }
-            is DrawingAction.UpdateDrawing -> {
-                drawingState
-            }
-            is DrawingAction.EndDrawing -> {
-                drawingState.copy(isDrawing = false)
-            }
-            is DrawingAction.ClearCanvas -> {
-                undoRedoManager.saveState(emptyList())
-                drawingState.copy(
-                    elements = emptyList(),
-                    canUndo = undoRedoManager.canUndo(),
-                    canRedo = undoRedoManager.canRedo()
-                )
-            }
-            is DrawingAction.SetCanvasTransform -> {
-                drawingState.copy(
-                    canvasOffset = action.offset,
-                    canvasScale = action.scale,
-                    canvasRotation = action.rotation
-                )
-            }
-            is DrawingAction.SetStrokeColor -> {
-                drawingState.copy(strokeColor = action.color)
-            }
-            is DrawingAction.SetStrokeWidth -> {
-                drawingState.copy(strokeWidth = action.width)
-            }
-            is DrawingAction.ToggleSnap -> {
-                drawingState.copy(snapEnabled = action.enabled)
-            }
-            is DrawingAction.Undo -> {
-                val previousElements = undoRedoManager.undo()
-                if (previousElements != null) {
-                    drawingState.copy(
-                        elements = previousElements,
-                        canUndo = undoRedoManager.canUndo(),
-                        canRedo = undoRedoManager.canRedo()
-                    )
-                } else {
-                    drawingState
+    // Get the view and context for haptic feedback
+    val view = LocalView.current
+    val context = LocalContext.current
+    
+    // Set up haptic feedback handler
+    LaunchedEffect(Unit) {
+        // Monitor the drawing state for haptic feedback actions
+        snapshotFlow { viewModel.drawingState.value }
+            .collect { state ->
+                if (state.lastAction is DrawingAction.PerformHapticFeedback) {
+                    HapticFeedbackUtil.performSnapHapticFeedback(view)
+                    HapticFeedbackUtil.performSnapVibration(context)
                 }
             }
-            is DrawingAction.Redo -> {
-                val nextElements = undoRedoManager.redo()
-                if (nextElements != null) {
-                    drawingState.copy(
-                        elements = nextElements,
-                        canUndo = undoRedoManager.canUndo(),
-                        canRedo = undoRedoManager.canRedo()
-                    )
-                } else {
-                    drawingState
-                }
-            }
-        }
     }
     
     Scaffold(
@@ -120,7 +67,7 @@ fun SnappyRulerSetApp() {
                 actions = {
                     // Undo button
                     IconButton(
-                        onClick = { handleAction(DrawingAction.Undo) },
+                        onClick = { viewModel.handleAction(DrawingAction.Undo) },
                         enabled = drawingState.canUndo
                     ) {
                         Icon(
@@ -136,7 +83,7 @@ fun SnappyRulerSetApp() {
                     
                     // Redo button
                     IconButton(
-                        onClick = { handleAction(DrawingAction.Redo) },
+                        onClick = { viewModel.handleAction(DrawingAction.Redo) },
                         enabled = drawingState.canRedo
                     ) {
                         Icon(
@@ -152,7 +99,7 @@ fun SnappyRulerSetApp() {
                     
                     // Clear button
                     TextButton(
-                        onClick = { handleAction(DrawingAction.ClearCanvas) }
+                        onClick = { viewModel.handleAction(DrawingAction.ClearCanvas) }
                     ) {
                         Text("Clear")
                     }
@@ -169,14 +116,15 @@ fun SnappyRulerSetApp() {
             ToolOverlay(
                 currentTool = drawingState.currentTool,
                 onToolSelected = { tool ->
-                    handleAction(DrawingAction.SetTool(tool))
+                    viewModel.handleAction(DrawingAction.SetTool(tool))
                 }
             )
             
             // Drawing canvas
             DrawingCanvas(
                 state = drawingState,
-                onAction = ::handleAction,
+                snapEngine = viewModel.snapEngine,
+                onAction = viewModel::handleAction,
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)

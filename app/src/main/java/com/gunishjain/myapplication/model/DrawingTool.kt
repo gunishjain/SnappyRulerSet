@@ -10,37 +10,37 @@ sealed class DrawingTool(
     val icon: String,
     val color: Color
 ) {
-    object Freehand : DrawingTool(
+    data object Freehand : DrawingTool(
         name = "Freehand",
         icon = "✏️",
         color = Color.Black
     )
     
-    object Ruler : DrawingTool(
+    data object Ruler : DrawingTool(
         name = "Ruler",
         icon = "📏",
         color = Color.Blue
     )
     
-    object SetSquare45 : DrawingTool(
+    data object SetSquare45 : DrawingTool(
         name = "Set Square 45°",
         icon = "📐",
         color = Color.Green
     )
     
-    object SetSquare30 : DrawingTool(
+    data object SetSquare30 : DrawingTool(
         name = "Set Square 30°",
         icon = "📐",
         color = Color.Green
     )
     
-    object Protractor : DrawingTool(
+    data object Protractor : DrawingTool(
         name = "Protractor",
         icon = "📊",
         color = Color.Red
     )
     
-    object Compass : DrawingTool(
+    data object Compass : DrawingTool(
         name = "Compass",
         icon = "⭕",
         color = Color.Magenta
