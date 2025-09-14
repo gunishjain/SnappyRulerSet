@@ -116,31 +116,29 @@ fun SnappyRulerSetApp() {
                         )
                     }
                     
-                    // Grid spacing dropdown
-                    if (drawingState.snapEnabled) {
-                        var expanded by remember { mutableStateOf(false) }
-                        val gridSpacingOptions = listOf(10f, 20f, 30f, 40f, 50f)
+                    // Grid spacing dropdown (always visible)
+                    var expanded by remember { mutableStateOf(false) }
+                    val gridSpacingOptions = listOf(10f, 20f, 30f, 40f, 50f)
+                    
+                    Box {
+                        TextButton(
+                            onClick = { expanded = true }
+                        ) {
+                            Text("Grid: ${drawingState.gridSpacing.toInt()}px")
+                        }
                         
-                        Box {
-                            TextButton(
-                                onClick = { expanded = true }
-                            ) {
-                                Text("Grid: ${drawingState.gridSpacing.toInt()}px")
-                            }
-                            
-                            DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                gridSpacingOptions.forEach { spacing ->
-                                    DropdownMenuItem(
-                                        text = { Text("${spacing.toInt()}px") },
-                                        onClick = {
-                                            viewModel.handleAction(DrawingAction.SetGridSpacing(spacing))
-                                            expanded = false
-                                        }
-                                    )
-                                }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            gridSpacingOptions.forEach { spacing ->
+                                DropdownMenuItem(
+                                    text = { Text("${spacing.toInt()}px") },
+                                    onClick = {
+                                        viewModel.handleAction(DrawingAction.SetGridSpacing(spacing))
+                                        expanded = false
+                                    }
+                                )
                             }
                         }
                     }

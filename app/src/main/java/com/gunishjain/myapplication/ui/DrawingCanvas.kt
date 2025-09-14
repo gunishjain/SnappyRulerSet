@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -73,24 +74,11 @@ fun DrawingCanvas(
                             DrawingTool.Freehand -> {
                                 println("DEBUG: DrawingCanvas - Freehand tool tap handling")
                                 
-                                // Apply snapping if enabled
-                                val snapResult = if (state.snapEnabled) {
-                                    snapEngine.findBestSnapTarget(point, state.elements)
-                                } else null
-                                
-                                // Use snapped point if available
-                                val finalPoint = snapResult?.snappedPoint ?: point
-                                
-                                // Trigger haptic feedback if snapped
-                                if (snapResult != null) {
-                                    onAction(DrawingAction.PerformHapticFeedback)
-                                }
-                                
-                                // For freehand, a tap creates a dot
+                                // For freehand, a tap creates a dot - no snapping for natural feel
                                 onAction(DrawingAction.AddElement(
                                     DrawingElement.CircleElement(
                                         Circle(
-                                            center = finalPoint,
+                                            center = point,
                                             radius = state.strokeWidth / 2,
                                             color = state.strokeColor,
                                             strokeWidth = state.strokeWidth
@@ -167,25 +155,13 @@ fun DrawingCanvas(
                             DrawingTool.Freehand -> {
                                 println("DEBUG: DrawingCanvas - Freehand onDrag - Current path: $currentPath")
                                 
-                                // Apply snapping if enabled
-                                val snapResult = if (state.snapEnabled) {
-                                    snapEngine.findBestSnapTarget(point, state.elements)
-                                } else null
-                                
-                                // Use snapped point if available
-                                val finalPoint = snapResult?.snappedPoint ?: point
-                                
-                                // Trigger haptic feedback if snapped
-                                if (snapResult != null) {
-                                    onAction(DrawingAction.PerformHapticFeedback)
-                                }
-                                
-                                onAction(DrawingAction.UpdateDrawing(finalPoint))
+                                // Freehand drawing - no snapping for smooth, natural lines
+                                onAction(DrawingAction.UpdateDrawing(point))
                                 currentPath?.quadraticTo(
                                     change.previousPosition.x,
                                     change.previousPosition.y,
-                                    finalPoint.x,
-                                    finalPoint.y
+                                    change.position.x,
+                                    change.position.y
                                 )
                             }
                             DrawingTool.Ruler -> {
@@ -261,10 +237,8 @@ fun DrawingCanvas(
                 scale(state.canvasScale, state.canvasScale)
                 rotate(state.canvasRotation)
             }) {
-                // Draw grid if snap is enabled
-                if (state.snapEnabled) {
-                    snapEngine.drawGrid(this, size)
-                }
+                // Draw grid always visible
+                snapEngine.drawGrid(this, size)
                 
                 // Draw all existing elements
                 state.elements.forEach { element ->
@@ -298,6 +272,11 @@ fun DrawingCanvas(
                     
                     val snapTargets = snapEngine.generateSnapTargets(state.elements)
                     snapEngine.drawSnapIndicators(this, currentPoint, snapTargets)
+                }
+                
+                // Update snap targets for precision tools (Ruler, etc.)
+                if (state.snapEnabled) {
+                    snapEngine.updateSnapTargets(state.elements, size.width, size.height)
                 }
             }
         }
