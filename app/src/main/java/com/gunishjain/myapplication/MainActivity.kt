@@ -9,8 +9,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -95,6 +97,52 @@ fun SnappyRulerSetApp() {
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             }
                         )
+                    }
+                    
+                    // Snap toggle button
+                    IconButton(
+                        onClick = { 
+                            viewModel.handleAction(DrawingAction.ToggleSnap(!drawingState.snapEnabled))
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (drawingState.snapEnabled) Icons.Default.Check else Icons.Default.Clear,
+                            contentDescription = if (drawingState.snapEnabled) "Disable Snap" else "Enable Snap",
+                            tint = if (drawingState.snapEnabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            }
+                        )
+                    }
+                    
+                    // Grid spacing dropdown
+                    if (drawingState.snapEnabled) {
+                        var expanded by remember { mutableStateOf(false) }
+                        val gridSpacingOptions = listOf(10f, 20f, 30f, 40f, 50f)
+                        
+                        Box {
+                            TextButton(
+                                onClick = { expanded = true }
+                            ) {
+                                Text("Grid: ${drawingState.gridSpacing.toInt()}px")
+                            }
+                            
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                gridSpacingOptions.forEach { spacing ->
+                                    DropdownMenuItem(
+                                        text = { Text("${spacing.toInt()}px") },
+                                        onClick = {
+                                            viewModel.handleAction(DrawingAction.SetGridSpacing(spacing))
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                     
                     // Clear button

@@ -72,11 +72,25 @@ fun DrawingCanvas(
                         when (state.currentTool) {
                             DrawingTool.Freehand -> {
                                 println("DEBUG: DrawingCanvas - Freehand tool tap handling")
+                                
+                                // Apply snapping if enabled
+                                val snapResult = if (state.snapEnabled) {
+                                    snapEngine.findBestSnapTarget(point, state.elements)
+                                } else null
+                                
+                                // Use snapped point if available
+                                val finalPoint = snapResult?.snappedPoint ?: point
+                                
+                                // Trigger haptic feedback if snapped
+                                if (snapResult != null) {
+                                    onAction(DrawingAction.PerformHapticFeedback)
+                                }
+                                
                                 // For freehand, a tap creates a dot
                                 onAction(DrawingAction.AddElement(
                                     DrawingElement.CircleElement(
                                         Circle(
-                                            center = point,
+                                            center = finalPoint,
                                             radius = state.strokeWidth / 2,
                                             color = state.strokeColor,
                                             strokeWidth = state.strokeWidth
@@ -86,11 +100,25 @@ fun DrawingCanvas(
                             }
                             DrawingTool.Ruler -> {
                                         println("DEBUG: DrawingCanvas - Ruler tool tap handling")
+                                        
+                                        // Apply snapping if enabled
+                                        val snapResult = if (state.snapEnabled) {
+                                            snapEngine.findBestSnapTarget(point, state.elements)
+                                        } else null
+                                        
+                                        // Use snapped point if available
+                                        val finalPoint = snapResult?.snappedPoint ?: point
+                                        
+                                        // Trigger haptic feedback if snapped
+                                        if (snapResult != null) {
+                                            onAction(DrawingAction.PerformHapticFeedback)
+                                        }
+                                        
                                         // For ruler, a tap creates a dot (same as freehand)
                                         onAction(DrawingAction.AddElement(
                                             DrawingElement.CircleElement(
                                                 Circle(
-                                                    center = point,
+                                                    center = finalPoint,
                                                     radius = state.strokeWidth / 2,
                                                     color = state.strokeColor,
                                                     strokeWidth = state.strokeWidth
@@ -138,23 +166,51 @@ fun DrawingCanvas(
                         when (state.currentTool) {
                             DrawingTool.Freehand -> {
                                 println("DEBUG: DrawingCanvas - Freehand onDrag - Current path: $currentPath")
-                                onAction(DrawingAction.UpdateDrawing(point))
+                                
+                                // Apply snapping if enabled
+                                val snapResult = if (state.snapEnabled) {
+                                    snapEngine.findBestSnapTarget(point, state.elements)
+                                } else null
+                                
+                                // Use snapped point if available
+                                val finalPoint = snapResult?.snappedPoint ?: point
+                                
+                                // Trigger haptic feedback if snapped
+                                if (snapResult != null) {
+                                    onAction(DrawingAction.PerformHapticFeedback)
+                                }
+                                
+                                onAction(DrawingAction.UpdateDrawing(finalPoint))
                                 currentPath?.quadraticTo(
                                     change.previousPosition.x,
                                     change.previousPosition.y,
-                                    change.position.x,
-                                    change.position.y
+                                    finalPoint.x,
+                                    finalPoint.y
                                 )
                             }
                             DrawingTool.Ruler -> {
                                 // For ruler, create straight lines with snapping
-                                onAction(DrawingAction.UpdateDrawing(point))
+                                
+                                // Apply snapping if enabled
+                                val snapResult = if (state.snapEnabled) {
+                                    snapEngine.findBestSnapTarget(point, state.elements)
+                                } else null
+                                
+                                // Use snapped point if available
+                                val finalPoint = snapResult?.snappedPoint ?: point
+                                
+                                // Trigger haptic feedback if snapped
+                                if (snapResult != null) {
+                                    onAction(DrawingAction.PerformHapticFeedback)
+                                }
+                                
+                                onAction(DrawingAction.UpdateDrawing(finalPoint))
                                 
                                 // Create a straight line from start to current position
                                 rulerStartPoint?.let { startPoint ->
                                     val newPath = Path()
                                     newPath.moveTo(startPoint.x, startPoint.y)
-                                    newPath.lineTo(change.position.x, change.position.y)
+                                    newPath.lineTo(finalPoint.x, finalPoint.y)
                                     currentPath = newPath
                                 }
                             }
@@ -229,6 +285,20 @@ fun DrawingCanvas(
                 }
                 
                 // Ruler tool now draws straight lines directly, no visible ruler object
+                
+                // Draw snap indicators if snap is enabled and we're drawing
+                if (state.snapEnabled && state.isDrawing) {
+                    val currentPoint = if (state.currentTool == DrawingTool.Ruler && rulerStartPoint != null) {
+                        val bounds = currentPath?.getBounds()
+                        if (bounds != null) Point(bounds.right, bounds.bottom) else rulerStartPoint!!
+                    } else {
+                        // For freehand, use the last drawing point
+                        Point(0f, 0f) // This will be updated with actual current position
+                    }
+                    
+                    val snapTargets = snapEngine.generateSnapTargets(state.elements)
+                    snapEngine.drawSnapIndicators(this, currentPoint, snapTargets)
+                }
             }
         }
         
