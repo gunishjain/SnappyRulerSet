@@ -6,9 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -63,7 +63,7 @@ fun SnappyRulerSetApp() {
     var showExportResult by remember { mutableStateOf(false) }
     var exportResultMessage by remember { mutableStateOf("") }
     var exportFormat by remember { mutableStateOf<BitmapExporter.ExportFormat?>(null) }
-    var exportQuality by remember { mutableStateOf(90) }
+    var exportQuality by remember { mutableIntStateOf(90) }
     
     // Permission handler for export
     val requestExport = rememberPermissionHandler(
@@ -124,7 +124,7 @@ fun SnappyRulerSetApp() {
                         enabled = drawingState.canUndo
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Clear,
+                            imageVector = ImageVector.vectorResource(id = R.drawable.undo),
                             contentDescription = "Undo",
                             tint = if (drawingState.canUndo) {
                                 MaterialTheme.colorScheme.onSurface
@@ -140,7 +140,7 @@ fun SnappyRulerSetApp() {
                         enabled = drawingState.canRedo
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            imageVector = ImageVector.vectorResource(id = R.drawable.redo),
                             contentDescription = "Redo",
                             tint = if (drawingState.canRedo) {
                                 MaterialTheme.colorScheme.onSurface
@@ -157,7 +157,10 @@ fun SnappyRulerSetApp() {
                         }
                     ) {
                         Icon(
-                            imageVector = if (drawingState.snapEnabled) Icons.Default.Check else Icons.Default.Clear,
+                            imageVector = if (drawingState.snapEnabled) 
+                                ImageVector.vectorResource(id = R.drawable.toggle_on) 
+                            else 
+                                ImageVector.vectorResource(id = R.drawable.toggle_off),
                             contentDescription = if (drawingState.snapEnabled) "Disable Snap" else "Enable Snap",
                             tint = if (drawingState.snapEnabled) {
                                 MaterialTheme.colorScheme.primary
@@ -244,7 +247,7 @@ fun SnappyRulerSetApp() {
                 PrecisionHUD(
                     rulerTool = tempRuler,
                     isVisible = true,
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    modifier = Modifier.align(Alignment.BottomStart)
                 )
             }
             
@@ -253,7 +256,7 @@ fun SnappyRulerSetApp() {
                 CompassPrecisionHUD(
                     compassTool = drawingState.compassTool,
                     isVisible = true,
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    modifier = Modifier.align(Alignment.BottomStart)
                 )
             }
             
@@ -262,7 +265,7 @@ fun SnappyRulerSetApp() {
                 ProtractorPrecisionHUD(
                     protractorTool = drawingState.protractorTool,
                     isVisible = true,
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    modifier = Modifier.align(Alignment.BottomStart)
                 )
             }
             

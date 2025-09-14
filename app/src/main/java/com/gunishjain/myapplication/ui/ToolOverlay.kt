@@ -93,10 +93,6 @@ private fun ToolChip(
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp,
-            color = borderColor
         )
     ) {
         Row(
