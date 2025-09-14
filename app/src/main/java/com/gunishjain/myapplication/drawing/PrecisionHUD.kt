@@ -44,7 +44,7 @@ fun PrecisionHUD(
             horizontalAlignment = Alignment.End
         ) {
             Text(
-                text = "Distance: ${String.format("%.1f", distance)} px",
+                text = "Distance: ${String.format("%.1f", distance * 0.0264583333)} cm",
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold

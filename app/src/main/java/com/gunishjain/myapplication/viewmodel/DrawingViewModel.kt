@@ -37,16 +37,18 @@ class DrawingViewModel : ViewModel() {
         val newState = when (action) {
             is DrawingAction.SetTool -> {
                 println("DEBUG: DrawingViewModel - Setting tool to ${action.tool.name}")
-                println("DEBUG: DrawingViewModel - Current tool before change: ${_drawingState.value.currentTool.name}")
+                println("DEBUG: DrawingViewModel - Previous tool: ${_drawingState.value.currentTool.name}")
                 var newState = _drawingState.value.copy(currentTool = action.tool)
-                println("DEBUG: DrawingViewModel - Current tool after change: ${newState.currentTool.name}")
+                println("DEBUG: DrawingViewModel - New tool after copy: ${newState.currentTool.name}")
                 
-                // If switching to Ruler tool, ensure the ruler is visible
-                if (action.tool.name == "Ruler" && !newState.rulerTool.isVisible) {
-                    println("DEBUG: DrawingViewModel - Initializing ruler tool visibility")
-                    newState = newState.copy(rulerTool = newState.rulerTool.copy(isVisible = true))
+                // If switching away from Ruler tool, clear ruler state
+                if (action.tool != DrawingTool.Ruler) {
+                    newState = newState.copy(
+                        rulerTool = newState.rulerTool.copy(isVisible = false)
+                    )
                 }
                 
+                println("DEBUG: DrawingViewModel - Final tool: ${newState.currentTool.name}")
                 newState
             }
             is DrawingAction.AddElement -> {

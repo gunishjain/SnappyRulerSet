@@ -18,6 +18,7 @@ import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.data.DrawingState
 import com.gunishjain.myapplication.drawing.PrecisionHUD
 import com.gunishjain.myapplication.drawing.SnapEngine
+import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.model.*
 import kotlinx.coroutines.delay
 
@@ -33,18 +34,35 @@ fun DrawingCanvas(
     onAction: (DrawingAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Debug: Log state changes
+    LaunchedEffect(state.currentTool) {
+        println("DEBUG: DrawingCanvas - Received state with tool: ${state.currentTool.name}")
+    }
     // Track double tap for ruler line creation
     var lastTapTime by remember { mutableStateOf(0L) }
     val doubleTapThreshold = 300L // milliseconds
     val context = LocalContext.current
     val density = LocalDensity.current
     var currentPath by remember { mutableStateOf<Path?>(null) }
+    var rulerStartPoint by remember { mutableStateOf<Point?>(null) }
+    
+    // Clear ruler state when switching away from ruler tool
+    LaunchedEffect(state.currentTool) {
+        if (state.currentTool != DrawingTool.Ruler) {
+            rulerStartPoint = null
+        }
+    }
+    
+    // Debug: Log current tool changes
+    LaunchedEffect(state.currentTool) {
+        println("DEBUG: DrawingCanvas - Tool changed to: ${state.currentTool.name}")
+    }
     
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(state.currentTool) {
+                .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { offset ->
                         val point = Point(offset.x, offset.y)
@@ -68,79 +86,58 @@ fun DrawingCanvas(
                             }
                             DrawingTool.Ruler -> {
                                         println("DEBUG: DrawingCanvas - Ruler tool tap handling")
-                                        // For ruler, a tap toggles the ruler visibility or creates a line on double tap
-                                        if (state.rulerTool.isVisible) {
-                                            // Create a line along the ruler on double tap
-                                            println("DEBUG: DrawingCanvas - Creating line along ruler")
-                                            onAction(DrawingAction.AddElement(
-                                                DrawingElement.LineElement(
-                                                    Line(
-                                                        start = state.rulerTool.startPoint,
-                                                        end = state.rulerTool.endPoint,
-                                                        color = state.strokeColor,
-                                                        strokeWidth = state.strokeWidth
-                                                    )
+                                        // For ruler, a tap creates a dot (same as freehand)
+                                        onAction(DrawingAction.AddElement(
+                                            DrawingElement.CircleElement(
+                                                Circle(
+                                                    center = point,
+                                                    radius = state.strokeWidth / 2,
+                                                    color = state.strokeColor,
+                                                    strokeWidth = state.strokeWidth
                                                 )
-                                            ))
-                                            // Hide the ruler after creating the line
-                                            onAction(DrawingAction.UpdateRulerTool(state.rulerTool.copy(isVisible = false)))
-                                        } else {
-                                            // Show the ruler at the tapped position
-                                            println("DEBUG: DrawingCanvas - Showing ruler at tapped position")
-                                            val rulerLength = 200f
-                                            val startPoint = Point(point.x - rulerLength / 2, point.y)
-                                            val endPoint = Point(point.x + rulerLength / 2, point.y)
-                                            onAction(DrawingAction.UpdateRulerTool(state.rulerTool.copy(
-                                                startPoint = startPoint,
-                                                endPoint = endPoint,
-                                                isVisible = true
-                                            )))
-                                        }
+                                            )
+                                        ))
                             }
                             else -> { /* Other tools */ }
                         }
                     }
                 )
             }
-            .pointerInput(Unit) {
+            .pointerInput(state.currentTool) {
                 detectDragGestures(
                     onDragStart = { offset ->
                         val point = Point(offset.x, offset.y)
                         println("DEBUG: DrawingCanvas - onDragStart - Current tool: ${state.currentTool.name}")
                         println("DEBUG: DrawingCanvas - onDragStart - Ruler visibility: ${state.rulerTool.isVisible}")
+                        println("DEBUG: DrawingCanvas - onDragStart - State tool: ${state.currentTool}")
+                        println("DEBUG: DrawingCanvas - onDragStart - Tool comparison: ${state.currentTool == DrawingTool.Ruler}")
                         
                         when (state.currentTool) {
                             DrawingTool.Freehand -> {
                                 println("DEBUG: DrawingCanvas - onDragStart - Handling Freehand tool drag")
+                                println("DEBUG: DrawingCanvas - Freehand - Current path before: $currentPath")
                                 onAction(DrawingAction.StartDrawing(point))
                                 currentPath = Path().apply { moveTo(offset.x, offset.y) }
+                                println("DEBUG: DrawingCanvas - Freehand - Current path after: $currentPath")
                             }
                             DrawingTool.Ruler -> {
-                                println("DEBUG: DrawingCanvas - onDragStart - Ruler tool drag - isVisible: ${state.rulerTool.isVisible}")
-                                if (state.rulerTool.isVisible) {
-                                    onAction(DrawingAction.StartRulerDrag(point))
-                                } else {
-                                    println("DEBUG: DrawingCanvas - onDragStart - Ruler not visible, initializing")
-                                    // Initialize ruler if not visible
-                                    val rulerLength = 200f
-                                    val startPoint = Point(offset.x - rulerLength / 2, offset.y)
-                                    val endPoint = Point(offset.x + rulerLength / 2, offset.y)
-                                    val newRuler = state.rulerTool.copy(
-                                        startPoint = startPoint,
-                                        endPoint = endPoint,
-                                        isVisible = true,
-                                        isDragging = true
-                                    )
-                                    onAction(DrawingAction.UpdateRulerTool(newRuler))
-                                }
+                                println("DEBUG: DrawingCanvas - onDragStart - Ruler tool drag - Current tool: ${state.currentTool.name}")
+                                // For ruler, start drawing a straight line
+                                onAction(DrawingAction.StartDrawing(point))
+                                rulerStartPoint = point
+                                currentPath = Path().apply { moveTo(offset.x, offset.y) }
+                                println("DEBUG: DrawingCanvas - Ruler start point set: $rulerStartPoint")
                             }
-                            else -> { /* Other tools */ }
+                            else -> { 
+                                println("DEBUG: DrawingCanvas - onDragStart - Other tool: ${state.currentTool.name}")
+                            }
                           }
                       },
                       onDrag = { change, _ ->
                         val point = Point(change.position.x, change.position.y)
                         when (state.currentTool) {
                             DrawingTool.Freehand -> {
+                                println("DEBUG: DrawingCanvas - Freehand onDrag - Current path: $currentPath")
                                 onAction(DrawingAction.UpdateDrawing(point))
                                 currentPath?.quadraticTo(
                                     change.previousPosition.x,
@@ -150,21 +147,15 @@ fun DrawingCanvas(
                                 )
                             }
                             DrawingTool.Ruler -> {
-                                if (state.rulerTool.isVisible) {
-                                    // Apply snapping if enabled
-                                    val snapResult = if (state.snapEnabled) {
-                                        snapEngine.findBestSnapTarget(point, state.elements)
-                                    } else null
-                                    
-                                    // Use snapped point if available
-                                    val finalPoint = snapResult?.snappedPoint ?: point
-                                    
-                                    // Trigger haptic feedback if snapped
-                                    if (snapResult != null) {
-                                        onAction(DrawingAction.PerformHapticFeedback)
-                                    }
-                                    
-                                    onAction(DrawingAction.UpdateRulerDrag(finalPoint))
+                                // For ruler, create straight lines with snapping
+                                onAction(DrawingAction.UpdateDrawing(point))
+                                
+                                // Create a straight line from start to current position
+                                rulerStartPoint?.let { startPoint ->
+                                    val newPath = Path()
+                                    newPath.moveTo(startPoint.x, startPoint.y)
+                                    newPath.lineTo(change.position.x, change.position.y)
+                                    currentPath = newPath
                                 }
                             }
                             else -> { /* Other tools */ }
@@ -187,9 +178,20 @@ fun DrawingCanvas(
                                 currentPath = null
                             }
                             DrawingTool.Ruler -> {
-                                if (state.rulerTool.isVisible) {
-                                    onAction(DrawingAction.EndRulerDrag(Point(0f, 0f)))
+                                // For ruler, end drawing and create the line element
+                                currentPath?.let { path ->
+                                    onAction(DrawingAction.AddElement(
+                                        DrawingElement.StrokeElement(
+                                            com.gunishjain.myapplication.model.Stroke(
+                                                path = path,
+                                                color = state.strokeColor,
+                                                strokeWidth = state.strokeWidth
+                                            )
+                                        )
+                                    ))
                                 }
+                                currentPath = null
+                                rulerStartPoint = null
                             }
                             else -> { /* Other tools */ }
                         }
@@ -226,25 +228,28 @@ fun DrawingCanvas(
                     )
                 }
                 
-                // Draw ruler tool
-                if (state.currentTool == DrawingTool.Ruler && state.rulerTool.isVisible) {
-                    println("DEBUG: Drawing ruler tool - visible: ${state.rulerTool.isVisible}, start: ${state.rulerTool.startPoint}, end: ${state.rulerTool.endPoint}")
-                    state.rulerTool.draw(this)
-                    
-                    // Draw snap indicators if snap is enabled
-                    if (state.snapEnabled) {
-                        val currentPoint = state.rulerTool.endPoint
-                        val snapTargets = snapEngine.generateSnapTargets(state.elements)
-                        snapEngine.drawSnapIndicators(this, currentPoint, snapTargets)
-                    }
-                }
+                // Ruler tool now draws straight lines directly, no visible ruler object
             }
         }
         
-        // Add PrecisionHUD overlay when ruler is visible
-        if (state.currentTool == DrawingTool.Ruler && state.rulerTool.isVisible) {
+        // Add PrecisionHUD overlay when ruler tool is selected and drawing
+        if (state.currentTool == DrawingTool.Ruler && state.isDrawing && rulerStartPoint != null) {
+            // We need to get the current position from the currentPath
+            val currentEndPoint = if (currentPath != null) {
+                val bounds = currentPath!!.getBounds()
+                Point(bounds.right, bounds.bottom)
+            } else {
+                rulerStartPoint!!
+            }
+            
+            // Create a temporary ruler tool for HUD display with actual points
+            val tempRuler = RulerTool(
+                startPoint = rulerStartPoint!!,
+                endPoint = currentEndPoint,
+                isVisible = true
+            )
             PrecisionHUD(
-                rulerTool = state.rulerTool,
+                rulerTool = tempRuler,
                 isVisible = true
             )
         }
