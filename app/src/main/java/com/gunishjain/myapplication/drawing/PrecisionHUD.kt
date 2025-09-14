@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.CompassTool
+import com.gunishjain.myapplication.drawing.tool.ProtractorTool
 
 /**
  * A composable that displays precision measurements for the ruler tool
@@ -123,6 +124,79 @@ fun CompassPrecisionHUD(
                 text = "Center: (${String.format("%.0f", compassTool.center.x)}, ${String.format("%.0f", compassTool.center.y)})",
                 color = Color.Green,
                 fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * A composable that displays precision measurements for the protractor tool
+ */
+@Composable
+fun ProtractorPrecisionHUD(
+    protractorTool: ProtractorTool?,
+    isVisible: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    if (!isVisible || protractorTool == null) return
+    
+    val angle = protractorTool.angle
+    val firstLineLength = protractorTool.getFirstLineLength()
+    val secondLineLength = protractorTool.getSecondLineLength()
+    val firstLineLengthInCm = firstLineLength * 0.0264583333 // Convert pixels to cm
+    val secondLineLengthInCm = secondLineLength * 0.0264583333 // Convert pixels to cm
+    
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0x99000000))
+                .padding(12.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            if (angle > 0) {
+                Text(
+                    text = "Angle: ${String.format("%.1f", angle)}°",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+            
+            if (protractorTool.firstLineComplete) {
+                Text(
+                    text = "Line 1: ${String.format("%.1f", firstLineLengthInCm)} cm",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+            
+            if (protractorTool.secondLineComplete) {
+                Text(
+                    text = "Line 2: ${String.format("%.1f", secondLineLengthInCm)} cm",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+            
+            Text(
+                text = "Vertex: (${String.format("%.0f", protractorTool.vertex.x)}, ${String.format("%.0f", protractorTool.vertex.y)})",
+                color = Color.Green,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
         }

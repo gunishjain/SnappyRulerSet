@@ -203,6 +203,9 @@ class DrawingViewModel : ViewModel() {
             is DrawingAction.UpdateCompassTool -> {
                 _drawingState.value.copy(compassTool = action.compassTool)
             }
+            is DrawingAction.UpdateProtractorTool -> {
+                _drawingState.value.copy(protractorTool = action.protractorTool)
+            }
         }
         
         // Set the new state with the lastAction property

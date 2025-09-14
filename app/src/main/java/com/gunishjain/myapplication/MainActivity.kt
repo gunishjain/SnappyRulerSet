@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.drawing.PrecisionHUD
 import com.gunishjain.myapplication.drawing.CompassPrecisionHUD
+import com.gunishjain.myapplication.drawing.ProtractorPrecisionHUD
 import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.export.BitmapExporter
 import com.gunishjain.myapplication.model.DrawingTool
@@ -251,6 +252,15 @@ fun SnappyRulerSetApp() {
             if (drawingState.currentTool == DrawingTool.Compass && drawingState.isDrawing && drawingState.compassTool.isDrawing) {
                 CompassPrecisionHUD(
                     compassTool = drawingState.compassTool,
+                    isVisible = true,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+            }
+            
+            // Precision HUD for Protractor tool - show angle and line lengths
+            if (drawingState.currentTool == DrawingTool.Protractor && drawingState.protractorTool.isVisible) {
+                ProtractorPrecisionHUD(
+                    protractorTool = drawingState.protractorTool,
                     isVisible = true,
                     modifier = Modifier.align(Alignment.TopEnd)
                 )

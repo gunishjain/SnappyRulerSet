@@ -20,6 +20,7 @@ import com.gunishjain.myapplication.data.DrawingState
 import com.gunishjain.myapplication.drawing.SnapEngine
 import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.CompassTool
+import com.gunishjain.myapplication.drawing.tool.ProtractorTool
 import com.gunishjain.myapplication.model.*
 import kotlinx.coroutines.delay
 import kotlin.math.*
@@ -50,6 +51,8 @@ fun DrawingCanvas(
     var rulerStartPoint by remember { mutableStateOf<Point?>(null) }
     var compassStartPoint by remember { mutableStateOf<Point?>(null) }
     var currentCompass by remember { mutableStateOf<CompassTool?>(null) }
+    var protractorStartPoint by remember { mutableStateOf<Point?>(null) }
+    var currentProtractor by remember { mutableStateOf<ProtractorTool?>(null) }
     
     // Clear ruler state when switching away from ruler tool
     LaunchedEffect(state.currentTool) {
@@ -59,6 +62,52 @@ fun DrawingCanvas(
         if (state.currentTool != DrawingTool.Compass) {
             compassStartPoint = null
             currentCompass = null
+        }
+        if (state.currentTool != DrawingTool.Protractor) {
+            // If protractor has both lines complete, add them as permanent drawing elements
+            val currentProtractorState = currentProtractor
+            if (currentProtractorState != null && 
+                currentProtractorState.firstLineComplete && 
+                currentProtractorState.secondLineComplete) {
+                
+                // Create first line element
+                val firstLinePath = Path().apply {
+                    moveTo(currentProtractorState.vertex.x, currentProtractorState.vertex.y)
+                    lineTo(currentProtractorState.firstEndpoint.x, currentProtractorState.firstEndpoint.y)
+                }
+                
+                // Create second line element
+                val secondLinePath = Path().apply {
+                    moveTo(currentProtractorState.vertex.x, currentProtractorState.vertex.y)
+                    lineTo(currentProtractorState.secondEndpoint.x, currentProtractorState.secondEndpoint.y)
+                }
+                
+                // Add both lines as drawing elements
+                onAction(DrawingAction.AddElement(
+                    DrawingElement.StrokeElement(
+                        com.gunishjain.myapplication.model.Stroke(
+                            path = firstLinePath,
+                            color = Color.Black, // Black color for persisted lines
+                            strokeWidth = state.strokeWidth
+                        )
+                    )
+                ))
+                
+                onAction(DrawingAction.AddElement(
+                    DrawingElement.StrokeElement(
+                        com.gunishjain.myapplication.model.Stroke(
+                            path = secondLinePath,
+                            color = Color.Black, // Black color for persisted lines
+                            strokeWidth = state.strokeWidth
+                        )
+                    )
+                ))
+                
+                println("DEBUG: DrawingCanvas - Protractor lines added as permanent elements")
+            }
+            
+            protractorStartPoint = null
+            currentProtractor = null
         }
         // Clear path state when switching tools
         currentPath = null
@@ -129,6 +178,25 @@ fun DrawingCanvas(
                                 println("DEBUG: DrawingCanvas - Compass tool tap handling")
                                 // Compass tool - tap does nothing, only drag works
                             }
+                            DrawingTool.Protractor -> {
+                                println("DEBUG: DrawingCanvas - Protractor tool tap handling")
+                                val currentProtractorState = currentProtractor
+                                
+                                if (currentProtractorState == null) {
+                                    // First tap - place vertex and start first line
+                                    onAction(DrawingAction.StartDrawing(point))
+                                    protractorStartPoint = point
+                                    val initialProtractor = ProtractorTool().startDrawing(point)
+                                    currentProtractor = initialProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(initialProtractor))
+                                } else if (currentProtractorState.firstLineComplete && !currentProtractorState.isDrawing) {
+                                    // Second tap - start second line
+                                    onAction(DrawingAction.StartDrawing(point))
+                                    val updatedProtractor = currentProtractorState.startSecondLine()
+                                    currentProtractor = updatedProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(updatedProtractor))
+                                }
+                            }
                             else -> { /* Other tools */ }
                         }
                     }
@@ -183,6 +251,25 @@ fun DrawingCanvas(
                                 )
                                 onAction(DrawingAction.UpdateCompassTool(currentCompass!!))
                                 println("DEBUG: DrawingCanvas - Compass start point set: $point")
+                            }
+                            DrawingTool.Protractor -> {
+                                println("DEBUG: DrawingCanvas - onDragStart - Protractor tool drag")
+                                val currentProtractorState = currentProtractor
+                                
+                                if (currentProtractorState == null) {
+                                    // First drag - start drawing first line
+                                    onAction(DrawingAction.StartDrawing(point))
+                                    protractorStartPoint = point
+                                    val initialProtractor = ProtractorTool().startDrawing(point)
+                                    currentProtractor = initialProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(initialProtractor))
+                                } else if (currentProtractorState.firstLineComplete && !currentProtractorState.isDrawing) {
+                                    // Second drag - start drawing second line
+                                    onAction(DrawingAction.StartDrawing(point))
+                                    val updatedProtractor = currentProtractorState.startSecondLine()
+                                    currentProtractor = updatedProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(updatedProtractor))
+                                }
                             }
                             else -> { 
                                 println("DEBUG: DrawingCanvas - onDragStart - Other tool: ${state.currentTool.name}")
@@ -275,6 +362,33 @@ fun DrawingCanvas(
                                 println("DEBUG: DrawingCanvas - Compass onDrag - new center: ${updatedCompass.center}")
                                 onAction(DrawingAction.UpdateCompassTool(updatedCompass))
                             }
+                            DrawingTool.Protractor -> {
+                                // Protractor tool - drag to set endpoint
+                                println("DEBUG: DrawingCanvas - Protractor onDrag")
+                                val snapResult = if (state.snapEnabled) {
+                                    snapEngine.findBestSnapTarget(point, state.elements)
+                                } else null
+                                
+                                val finalPoint = snapResult?.snappedPoint ?: point
+                                
+                                if (snapResult != null) {
+                                    onAction(DrawingAction.PerformHapticFeedback)
+                                }
+                                
+                                val currentProtractorState = currentProtractor
+                                if (currentProtractorState != null) {
+                                    val updatedProtractor = if (currentProtractorState.isDrawingFirstLine) {
+                                        currentProtractorState.updateFirstEndpoint(finalPoint)
+                                    } else if (currentProtractorState.isDrawingSecondLine) {
+                                        currentProtractorState.updateSecondEndpoint(finalPoint)
+                                    } else {
+                                        currentProtractorState
+                                    }
+                                    
+                                    currentProtractor = updatedProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(updatedProtractor))
+                                }
+                            }
                             else -> { /* Other tools */ }
                         }
                     },
@@ -364,6 +478,67 @@ fun DrawingCanvas(
                                 currentCompass = null
                                 println("DEBUG: DrawingCanvas - Compass onDragEnd - Compass reset")
                             }
+                            DrawingTool.Protractor -> {
+                                // End protractor line drawing
+                                println("DEBUG: DrawingCanvas - Protractor onDragEnd")
+                                val lastProtractor = currentProtractor
+                                if (lastProtractor != null && lastProtractor.isDrawing) {
+                                    val finishedProtractor = if (lastProtractor.isDrawingFirstLine) {
+                                        lastProtractor.finishFirstLine()
+                                    } else if (lastProtractor.isDrawingSecondLine) {
+                                        lastProtractor.finishSecondLine()
+                                    } else {
+                                        lastProtractor.finishDrawing()
+                                    }
+                                    currentProtractor = finishedProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(finishedProtractor))
+                                    println("DEBUG: DrawingCanvas - Protractor onDragEnd - Line finished, angle: ${finishedProtractor.angle}")
+                                    
+                                    // If both lines are now complete, automatically persist them
+                                    if (finishedProtractor.firstLineComplete && finishedProtractor.secondLineComplete) {
+                                        // Create first line element
+                                        val firstLinePath = Path().apply {
+                                            moveTo(finishedProtractor.vertex.x, finishedProtractor.vertex.y)
+                                            lineTo(finishedProtractor.firstEndpoint.x, finishedProtractor.firstEndpoint.y)
+                                        }
+                                        
+                                        // Create second line element
+                                        val secondLinePath = Path().apply {
+                                            moveTo(finishedProtractor.vertex.x, finishedProtractor.vertex.y)
+                                            lineTo(finishedProtractor.secondEndpoint.x, finishedProtractor.secondEndpoint.y)
+                                        }
+                                        
+                                        // Add both lines as drawing elements
+                                        onAction(DrawingAction.AddElement(
+                                            DrawingElement.StrokeElement(
+                                                com.gunishjain.myapplication.model.Stroke(
+                                                    path = firstLinePath,
+                                                    color = Color.Black, // Black color for persisted lines
+                                                    strokeWidth = state.strokeWidth
+                                                )
+                                            )
+                                        ))
+                                        
+                                        onAction(DrawingAction.AddElement(
+                                            DrawingElement.StrokeElement(
+                                                com.gunishjain.myapplication.model.Stroke(
+                                                    path = secondLinePath,
+                                                    color = Color.Black, // Black color for persisted lines
+                                                    strokeWidth = state.strokeWidth
+                                                )
+                                            )
+                                        ))
+                                        
+                                        // Hide the protractor tool since lines are now persisted
+                                        val hiddenProtractor = finishedProtractor.hide()
+                                        currentProtractor = hiddenProtractor
+                                        onAction(DrawingAction.UpdateProtractorTool(hiddenProtractor))
+                                        
+                                        println("DEBUG: DrawingCanvas - Protractor lines automatically persisted as permanent elements")
+                                    }
+                                }
+                                onAction(DrawingAction.EndDrawing(Point(0f, 0f)))
+                            }
                             else -> { /* Other tools */ }
                         }
                     }
@@ -415,6 +590,14 @@ fun DrawingCanvas(
                     )
                 } else {
                     println("DEBUG: DrawingCanvas - NOT drawing compass - isVisible: ${currentCompass?.isVisible}, isDrawing: ${currentCompass?.isDrawing}, radius: ${currentCompass?.radius}, state.isDrawing: ${state.isDrawing}")
+                }
+                
+                // Draw Protractor tool
+                if (currentProtractor != null && currentProtractor!!.isVisible) {
+                    println("DEBUG: DrawingCanvas - Drawing protractor - angle: ${currentProtractor!!.angle}")
+                    drawProtractor(currentProtractor!!, state.strokeColor, state.strokeWidth)
+                } else {
+                    println("DEBUG: DrawingCanvas - NOT drawing protractor - isVisible: ${currentProtractor?.isVisible}")
                 }
                 
                 // Draw snap indicators if snap is enabled and we're drawing
@@ -498,6 +681,91 @@ private fun DrawScope.drawElement(element: DrawingElement) {
                     cap = StrokeCap.Round,
                     join = StrokeJoin.Round
                 )
+            )
+        }
+    }
+}
+
+/**
+ * Draw the protractor tool with angle measurement
+ */
+private fun DrawScope.drawProtractor(
+    protractor: ProtractorTool,
+    strokeColor: androidx.compose.ui.graphics.Color,
+    strokeWidth: Float
+) {
+    val vertex = Offset(protractor.vertex.x, protractor.vertex.y)
+    val firstEndpoint = Offset(protractor.firstEndpoint.x, protractor.firstEndpoint.y)
+    val secondEndpoint = Offset(protractor.secondEndpoint.x, protractor.secondEndpoint.y)
+    
+    // Draw the first line from vertex to first endpoint (if completed or being drawn)
+    if (protractor.firstLineComplete || protractor.isDrawingFirstLine) {
+        drawLine(
+            color = Color.Red,
+            start = vertex,
+            end = firstEndpoint,
+            strokeWidth = strokeWidth * 2f,
+            cap = StrokeCap.Round
+        )
+    }
+    
+    // Draw the second line from vertex to second endpoint (if completed or being drawn)
+    if (protractor.secondLineComplete || protractor.isDrawingSecondLine) {
+        drawLine(
+            color = Color.Red,
+            start = vertex,
+            end = secondEndpoint,
+            strokeWidth = strokeWidth * 2f,
+            cap = StrokeCap.Round
+        )
+    }
+    
+    // Draw draggable endpoint circles (only for completed lines)
+    if (protractor.firstLineComplete && protractor.firstEndpoint != protractor.vertex) {
+        drawCircle(
+            color = Color.Blue,
+            radius = 8f,
+            center = firstEndpoint,
+            style = Stroke(width = 2f)
+        )
+    }
+    
+    if (protractor.secondLineComplete && protractor.secondEndpoint != protractor.vertex) {
+        drawCircle(
+            color = Color.Blue,
+            radius = 8f,
+            center = secondEndpoint,
+            style = Stroke(width = 2f)
+        )
+    }
+    
+    // Draw angle arc (only when both lines are complete)
+    if (protractor.firstLineComplete && protractor.secondLineComplete && 
+        protractor.firstEndpoint != protractor.vertex && protractor.secondEndpoint != protractor.vertex) {
+        val angle = protractor.angle
+        if (angle > 0) {
+            // Draw angle arc
+            val arcRadius = 30f
+            val startAngle = atan2(firstEndpoint.y - vertex.y, firstEndpoint.x - vertex.x)
+            val sweepAngle = atan2(secondEndpoint.y - vertex.y, secondEndpoint.x - vertex.x) - startAngle
+            
+            drawArc(
+                color = Color(0xFFFF6600), // Orange color
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                topLeft = Offset(vertex.x - arcRadius, vertex.y - arcRadius),
+                size = androidx.compose.ui.geometry.Size(arcRadius * 2, arcRadius * 2),
+                style = Stroke(width = 3f, cap = StrokeCap.Round)
+            )
+            
+            // Draw angle text (simplified - just draw a circle for now)
+            val textOffset = Offset(vertex.x + 20f, vertex.y - 20f)
+            drawCircle(
+                color = Color.Blue,
+                radius = 12f,
+                center = textOffset,
+                style = Stroke(width = 2f)
             )
         }
     }

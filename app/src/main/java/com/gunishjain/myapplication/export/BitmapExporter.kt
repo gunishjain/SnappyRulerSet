@@ -21,6 +21,8 @@ import java.util.*
 import androidx.core.graphics.createBitmap
 import com.gunishjain.myapplication.drawing.tool.CompassTool
 import com.gunishjain.myapplication.drawing.tool.RulerTool
+import com.gunishjain.myapplication.drawing.tool.ProtractorTool
+import kotlin.math.atan2
 
 /**
  * Bitmap-based exporter that renders the Compose Canvas to a bitmap
@@ -120,6 +122,10 @@ object BitmapExporter {
         
         if (state.compassTool.isVisible) {
             drawCompassTool(canvas, state.compassTool)
+        }
+        
+        if (state.protractorTool.isVisible) {
+            drawProtractorTool(canvas, state.protractorTool)
         }
     }
     
@@ -253,6 +259,90 @@ object BitmapExporter {
             radius = compassTool.radius,
             paint = paint
         )
+    }
+    
+    /**
+     * Draw protractor tool
+     */
+    private fun drawProtractorTool(canvas: androidx.compose.ui.graphics.Canvas, protractorTool: ProtractorTool) {
+        val vertex = Offset(protractorTool.vertex.x, protractorTool.vertex.y)
+        val firstEndpoint = Offset(protractorTool.firstEndpoint.x, protractorTool.firstEndpoint.y)
+        val secondEndpoint = Offset(protractorTool.secondEndpoint.x, protractorTool.secondEndpoint.y)
+        
+        // Draw the two lines from vertex to endpoints
+        val linePaint = androidx.compose.ui.graphics.Paint().apply {
+            color = Color.Red
+            strokeWidth = 4f
+            style = androidx.compose.ui.graphics.PaintingStyle.Stroke
+            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+        }
+        
+        if (protractorTool.firstEndpoint != protractorTool.vertex) {
+            canvas.drawLine(
+                p1 = vertex,
+                p2 = firstEndpoint,
+                paint = linePaint
+            )
+        }
+        
+        if (protractorTool.secondEndpoint != protractorTool.vertex) {
+            canvas.drawLine(
+                p1 = vertex,
+                p2 = secondEndpoint,
+                paint = linePaint
+            )
+        }
+        
+        // Draw draggable endpoint circles
+        val circlePaint = androidx.compose.ui.graphics.Paint().apply {
+            color = Color.Blue
+            strokeWidth = 2f
+            style = androidx.compose.ui.graphics.PaintingStyle.Stroke
+        }
+        
+        if (protractorTool.firstEndpoint != protractorTool.vertex) {
+            canvas.drawCircle(
+                center = firstEndpoint,
+                radius = 8f,
+                paint = circlePaint
+            )
+        }
+        
+        if (protractorTool.secondEndpoint != protractorTool.vertex) {
+            canvas.drawCircle(
+                center = secondEndpoint,
+                radius = 8f,
+                paint = circlePaint
+            )
+        }
+        
+        // Draw angle arc
+        if (protractorTool.firstEndpoint != protractorTool.vertex && protractorTool.secondEndpoint != protractorTool.vertex) {
+            val angle = protractorTool.angle
+            if (angle > 0) {
+                val arcPaint = androidx.compose.ui.graphics.Paint().apply {
+                    color = Color(0xFFFF6600) // Orange color
+                    strokeWidth = 3f
+                    style = androidx.compose.ui.graphics.PaintingStyle.Stroke
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                }
+                
+                val arcRadius = 30f
+                val startAngle = atan2(firstEndpoint.y - vertex.y, firstEndpoint.x - vertex.x)
+                val sweepAngle = atan2(secondEndpoint.y - vertex.y, secondEndpoint.x - vertex.x) - startAngle
+                
+                canvas.drawArc(
+                    left = vertex.x - arcRadius,
+                    top = vertex.y - arcRadius,
+                    right = vertex.x + arcRadius,
+                    bottom = vertex.y + arcRadius,
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    paint = arcPaint
+                )
+            }
+        }
     }
     
     /**
