@@ -46,6 +46,7 @@ fun DrawingCanvas(
     val context = LocalContext.current
     val density = LocalDensity.current
     var currentPath by remember { mutableStateOf<Path?>(null) }
+    var currentPathPoints by remember { mutableStateOf<List<Point>>(emptyList()) }
     var rulerStartPoint by remember { mutableStateOf<Point?>(null) }
     var compassStartPoint by remember { mutableStateOf<Point?>(null) }
     var currentCompass by remember { mutableStateOf<CompassTool?>(null) }
@@ -59,6 +60,9 @@ fun DrawingCanvas(
             compassStartPoint = null
             currentCompass = null
         }
+        // Clear path state when switching tools
+        currentPath = null
+        currentPathPoints = emptyList()
     }
     
     // Debug: Log current tool changes
@@ -145,6 +149,7 @@ fun DrawingCanvas(
                                 println("DEBUG: DrawingCanvas - Freehand - Current path before: $currentPath")
                                 onAction(DrawingAction.StartDrawing(point))
                                 currentPath = Path().apply { moveTo(offset.x, offset.y) }
+                                currentPathPoints = listOf(point) // Start with first point
                                 println("DEBUG: DrawingCanvas - Freehand - Current path after: $currentPath")
                             }
                             DrawingTool.Ruler -> {
@@ -198,6 +203,9 @@ fun DrawingCanvas(
                                     change.position.x,
                                     change.position.y
                                 )
+                                
+                                // Add point to our path points list for export
+                                currentPathPoints = currentPathPoints + point
                             }
                             DrawingTool.Ruler -> {
                                 // For ruler, create straight lines with snapping
@@ -274,6 +282,7 @@ fun DrawingCanvas(
                         when (state.currentTool) {
                             DrawingTool.Freehand -> {
                                 currentPath?.let { path ->
+                                    // Create both StrokeElement (for display) and StrokeWithPointsElement (for export)
                                     onAction(DrawingAction.AddElement(
                                         DrawingElement.StrokeElement(
                                             com.gunishjain.myapplication.model.Stroke(
@@ -283,8 +292,22 @@ fun DrawingCanvas(
                                             )
                                         )
                                     ))
+                                    
+                                    // Also add the points-based version for export
+                                    if (currentPathPoints.isNotEmpty()) {
+                                        onAction(DrawingAction.AddElement(
+                                            DrawingElement.StrokeWithPointsElement(
+                                                StrokeWithPoints(
+                                                    points = currentPathPoints,
+                                                    color = state.strokeColor,
+                                                    strokeWidth = state.strokeWidth
+                                                )
+                                            )
+                                        ))
+                                    }
                                 }
                                 currentPath = null
+                                currentPathPoints = emptyList()
                             }
                             DrawingTool.Ruler -> {
                                 // For ruler, end drawing and create the line element
@@ -454,6 +477,26 @@ private fun DrawScope.drawElement(element: DrawingElement) {
                 style = Stroke(
                     width = element.circle.strokeWidth,
                     cap = StrokeCap.Round
+                )
+            )
+        }
+
+        is DrawingElement.StrokeWithPointsElement -> {
+            // Create a path from the points and draw it
+            val path = Path()
+            if (element.stroke.points.isNotEmpty()) {
+                path.moveTo(element.stroke.points[0].x, element.stroke.points[0].y)
+                for (i in 1 until element.stroke.points.size) {
+                    path.lineTo(element.stroke.points[i].x, element.stroke.points[i].y)
+                }
+            }
+            drawPath(
+                path = path,
+                color = element.stroke.color,
+                style = Stroke(
+                    width = element.stroke.strokeWidth,
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
                 )
             )
         }

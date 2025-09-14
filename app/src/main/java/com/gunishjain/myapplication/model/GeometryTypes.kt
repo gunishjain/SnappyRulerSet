@@ -38,6 +38,15 @@ data class Stroke(
 )
 
 /**
+ * Represents a freehand drawing stroke with points for export
+ */
+data class StrokeWithPoints(
+    val points: List<Point>,
+    val color: Color = Color.Black,
+    val strokeWidth: Float = 2f
+)
+
+/**
  * Represents an angle measurement
  */
 data class Angle(
@@ -63,6 +72,7 @@ data class Circle(
 sealed class DrawingElement {
     data class LineElement(val line: Line) : DrawingElement()
     data class StrokeElement(val stroke: Stroke) : DrawingElement()
+    data class StrokeWithPointsElement(val stroke: StrokeWithPoints) : DrawingElement()
     data class AngleElement(val angle: Angle) : DrawingElement()
     data class CircleElement(val circle: Circle) : DrawingElement()
 }
