@@ -19,6 +19,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
 import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.data.DrawingState
+import com.gunishjain.myapplication.drawing.PrecisionHUD
+import com.gunishjain.myapplication.drawing.CompassPrecisionHUD
+import com.gunishjain.myapplication.drawing.tool.RulerTool
+import com.gunishjain.myapplication.model.DrawingTool
 import com.gunishjain.myapplication.ui.DrawingCanvas
 import com.gunishjain.myapplication.ui.ToolOverlay
 import com.gunishjain.myapplication.ui.theme.SnappyRulerSetTheme
@@ -173,6 +177,37 @@ fun SnappyRulerSetApp() {
                 },
                 modifier = Modifier.align(Alignment.TopCenter)
             )
+            
+            // Precision HUD - positioned on top right, above ToolOverlay
+            if (drawingState.currentTool == DrawingTool.Ruler && drawingState.isDrawing) {
+                // We need to get the current position from the drawing state
+                val currentEndPoint = if (drawingState.rulerTool.isVisible) {
+                    drawingState.rulerTool.endPoint
+                } else {
+                    drawingState.rulerTool.startPoint
+                }
+                
+                // Create a temporary ruler tool for HUD display
+                val tempRuler = RulerTool(
+                    startPoint = drawingState.rulerTool.startPoint,
+                    endPoint = currentEndPoint,
+                    isVisible = true
+                )
+                PrecisionHUD(
+                    rulerTool = tempRuler,
+                    isVisible = true,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+            }
+            
+            // Precision HUD for Compass tool - show radius
+            if (drawingState.currentTool == DrawingTool.Compass && drawingState.isDrawing && drawingState.compassTool.isDrawing) {
+                CompassPrecisionHUD(
+                    compassTool = drawingState.compassTool,
+                    isVisible = true,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+            }
         }
     }
 }

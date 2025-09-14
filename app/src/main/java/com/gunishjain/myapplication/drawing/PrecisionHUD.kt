@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gunishjain.myapplication.drawing.tool.RulerTool
+import com.gunishjain.myapplication.drawing.tool.CompassTool
 
 /**
  * A composable that displays precision measurements for the ruler tool
@@ -69,6 +70,61 @@ fun PrecisionHUD(
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+    }
+}
+
+/**
+ * A composable that displays precision measurements for the compass tool
+ */
+@Composable
+fun CompassPrecisionHUD(
+    compassTool: CompassTool?,
+    isVisible: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    if (!isVisible || compassTool == null) return
+    
+    val radius = compassTool.radius
+    val radiusInCm = radius * 0.0264583333 // Convert pixels to cm (same conversion as ruler)
+    
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0x99000000))
+                .padding(12.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                text = "Radius: ${String.format("%.1f", radiusInCm)} cm",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "Diameter: ${String.format("%.1f", radiusInCm * 2)} cm",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "Center: (${String.format("%.0f", compassTool.center.x)}, ${String.format("%.0f", compassTool.center.y)})",
+                color = Color.Green,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

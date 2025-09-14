@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.data.DrawingState
-import com.gunishjain.myapplication.drawing.PrecisionHUD
 import com.gunishjain.myapplication.drawing.SnapEngine
 import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.CompassTool
@@ -154,6 +153,15 @@ fun DrawingCanvas(
                                 onAction(DrawingAction.StartDrawing(point))
                                 rulerStartPoint = point
                                 currentPath = Path().apply { moveTo(offset.x, offset.y) }
+                                
+                                // Initialize the ruler tool state for PrecisionHUD
+                                val initialRuler = RulerTool(
+                                    startPoint = point,
+                                    endPoint = point,
+                                    isVisible = true
+                                )
+                                onAction(DrawingAction.UpdateRulerTool(initialRuler))
+                                
                                 println("DEBUG: DrawingCanvas - Ruler start point set: $rulerStartPoint")
                             }
                             DrawingTool.Compass -> {
@@ -215,6 +223,14 @@ fun DrawingCanvas(
                                     newPath.moveTo(startPoint.x, startPoint.y)
                                     newPath.lineTo(finalPoint.x, finalPoint.y)
                                     currentPath = newPath
+                                    
+                                    // Update the global ruler tool state for PrecisionHUD
+                                    val updatedRuler = RulerTool(
+                                        startPoint = startPoint,
+                                        endPoint = finalPoint,
+                                        isVisible = true
+                                    )
+                                    onAction(DrawingAction.UpdateRulerTool(updatedRuler))
                                 }
                             }
                             DrawingTool.Compass -> {
@@ -285,6 +301,11 @@ fun DrawingCanvas(
                                 }
                                 currentPath = null
                                 rulerStartPoint = null
+                                
+                                // Clear the ruler tool state
+                                onAction(DrawingAction.UpdateRulerTool(
+                                    RulerTool(isVisible = false)
+                                ))
                             }
                             DrawingTool.Compass -> {
                                 // End compass drawing and create circle element
@@ -394,27 +415,7 @@ fun DrawingCanvas(
             }
         }
         
-        // Add PrecisionHUD overlay when ruler tool is selected and drawing
-        if (state.currentTool == DrawingTool.Ruler && state.isDrawing && rulerStartPoint != null) {
-            // We need to get the current position from the currentPath
-            val currentEndPoint = if (currentPath != null) {
-                val bounds = currentPath!!.getBounds()
-                Point(bounds.right, bounds.bottom)
-            } else {
-                rulerStartPoint!!
-            }
-            
-            // Create a temporary ruler tool for HUD display with actual points
-            val tempRuler = RulerTool(
-                startPoint = rulerStartPoint!!,
-                endPoint = currentEndPoint,
-                isVisible = true
-            )
-            PrecisionHUD(
-                rulerTool = tempRuler,
-                isVisible = true
-            )
-        }
+        // PrecisionHUD is now handled in MainActivity to avoid overlap issues
     }
 }
 
