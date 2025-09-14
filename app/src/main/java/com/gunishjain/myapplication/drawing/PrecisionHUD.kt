@@ -161,12 +161,25 @@ fun ProtractorPrecisionHUD(
             horizontalAlignment = Alignment.End
         ) {
             if (angle > 0) {
+                val nearestAngle = protractorTool.findNearestCommonAngle(angle)
+                val isSnapped = nearestAngle != null
+                
                 Text(
-                    text = "Angle: ${String.format("%.1f", angle)}°",
-                    color = Color.White,
+                    text = "Angle: ${String.format("%.1f", angle)}°${if (isSnapped) " (Snapped)" else ""}",
+                    color = if (isSnapped) Color.Green else Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
+                
+                if (isSnapped) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Snapped to: ${nearestAngle}°",
+                        color = Color.Green,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(4.dp))
             }

@@ -195,6 +195,14 @@ fun DrawingCanvas(
                                     val updatedProtractor = currentProtractorState.startSecondLine()
                                     currentProtractor = updatedProtractor
                                     onAction(DrawingAction.UpdateProtractorTool(updatedProtractor))
+                                } else if (currentProtractorState.firstLineComplete && currentProtractorState.secondLineComplete) {
+                                    // Both lines complete - start new measurement
+                                    onAction(DrawingAction.StartDrawing(point))
+                                    protractorStartPoint = point
+                                    val newProtractor = ProtractorTool().startDrawing(point)
+                                    currentProtractor = newProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(newProtractor))
+                                    println("DEBUG: DrawingCanvas - Starting new protractor measurement")
                                 }
                             }
                             else -> { /* Other tools */ }
@@ -269,6 +277,14 @@ fun DrawingCanvas(
                                     val updatedProtractor = currentProtractorState.startSecondLine()
                                     currentProtractor = updatedProtractor
                                     onAction(DrawingAction.UpdateProtractorTool(updatedProtractor))
+                                } else if (currentProtractorState.firstLineComplete && currentProtractorState.secondLineComplete) {
+                                    // Both lines complete - start new measurement
+                                    onAction(DrawingAction.StartDrawing(point))
+                                    protractorStartPoint = point
+                                    val newProtractor = ProtractorTool().startDrawing(point)
+                                    currentProtractor = newProtractor
+                                    onAction(DrawingAction.UpdateProtractorTool(newProtractor))
+                                    println("DEBUG: DrawingCanvas - Starting new protractor measurement via drag")
                                 }
                             }
                             else -> { 
@@ -380,7 +396,26 @@ fun DrawingCanvas(
                                     val updatedProtractor = if (currentProtractorState.isDrawingFirstLine) {
                                         currentProtractorState.updateFirstEndpoint(finalPoint)
                                     } else if (currentProtractorState.isDrawingSecondLine) {
-                                        currentProtractorState.updateSecondEndpoint(finalPoint)
+                                        // Check if user is forcing override
+                                        val isForcingOverride = currentProtractorState.isForcingOverride(finalPoint)
+                                        
+                                        // Apply angle snapping for second line with force override
+                                        val snappedPoint = currentProtractorState.snapSecondEndpointToCommonAngle(finalPoint, isForcingOverride)
+                                        val tempProtractor = currentProtractorState.updateSecondEndpoint(snappedPoint)
+                                        
+                                        // Check if we snapped to a common angle (and not forcing override)
+                                        val currentAngle = tempProtractor.calculateAngle()
+                                        val nearestAngle = tempProtractor.findNearestCommonAngle(currentAngle)
+                                        
+                                        if (nearestAngle != null && !isForcingOverride) {
+                                            // Provide haptic feedback for angle snapping
+                                            onAction(DrawingAction.PerformHapticFeedback)
+                                            println("DEBUG: DrawingCanvas - Protractor angle snapped to ${nearestAngle}°")
+                                        } else if (isForcingOverride) {
+                                            println("DEBUG: DrawingCanvas - Protractor angle override forced by user")
+                                        }
+                                        
+                                        tempProtractor
                                     } else {
                                         currentProtractorState
                                     }
@@ -529,12 +564,11 @@ fun DrawingCanvas(
                                             )
                                         ))
                                         
-                                        // Hide the protractor tool since lines are now persisted
-                                        val hiddenProtractor = finishedProtractor.hide()
-                                        currentProtractor = hiddenProtractor
-                                        onAction(DrawingAction.UpdateProtractorTool(hiddenProtractor))
+                                        // Reset the protractor tool for next measurement
+                                        currentProtractor = null
+                                        onAction(DrawingAction.UpdateProtractorTool(ProtractorTool()))
                                         
-                                        println("DEBUG: DrawingCanvas - Protractor lines automatically persisted as permanent elements")
+                                        println("DEBUG: DrawingCanvas - Protractor lines automatically persisted as permanent elements, tool reset for next measurement")
                                     }
                                 }
                                 onAction(DrawingAction.EndDrawing(Point(0f, 0f)))
@@ -744,28 +778,58 @@ private fun DrawScope.drawProtractor(
         protractor.firstEndpoint != protractor.vertex && protractor.secondEndpoint != protractor.vertex) {
         val angle = protractor.angle
         if (angle > 0) {
-            // Draw angle arc
+            // Check if angle is snapped to a common angle
+            val nearestAngle = protractor.findNearestCommonAngle(angle)
+            val isSnapped = nearestAngle != null
+            
+            // Draw angle arc with different color for snapped angles
             val arcRadius = 30f
             val startAngle = atan2(firstEndpoint.y - vertex.y, firstEndpoint.x - vertex.x)
             val sweepAngle = atan2(secondEndpoint.y - vertex.y, secondEndpoint.x - vertex.x) - startAngle
             
             drawArc(
-                color = Color(0xFFFF6600), // Orange color
+                color = if (isSnapped) Color.Green else Color(0xFFFF6600), // Green for snapped, orange for free
                 startAngle = startAngle,
                 sweepAngle = sweepAngle,
                 useCenter = false,
                 topLeft = Offset(vertex.x - arcRadius, vertex.y - arcRadius),
                 size = androidx.compose.ui.geometry.Size(arcRadius * 2, arcRadius * 2),
-                style = Stroke(width = 3f, cap = StrokeCap.Round)
+                style = Stroke(width = if (isSnapped) 4f else 3f, cap = StrokeCap.Round)
             )
             
             // Draw angle text (simplified - just draw a circle for now)
             val textOffset = Offset(vertex.x + 20f, vertex.y - 20f)
             drawCircle(
-                color = Color.Blue,
+                color = if (isSnapped) Color.Green else Color.Blue,
                 radius = 12f,
                 center = textOffset,
                 style = Stroke(width = 2f)
+            )
+        }
+    }
+    
+    // Draw angle arc while drawing second line (for real-time feedback)
+    if (protractor.isDrawingSecondLine && protractor.firstLineComplete && 
+        protractor.firstEndpoint != protractor.vertex && protractor.secondEndpoint != protractor.vertex) {
+        val angle = protractor.angle
+        if (angle > 0) {
+            // Check if angle is snapped to a common angle
+            val nearestAngle = protractor.findNearestCommonAngle(angle)
+            val isSnapped = nearestAngle != null
+            
+            // Draw angle arc with different color for snapped angles
+            val arcRadius = 30f
+            val startAngle = atan2(firstEndpoint.y - vertex.y, firstEndpoint.x - vertex.x)
+            val sweepAngle = atan2(secondEndpoint.y - vertex.y, secondEndpoint.x - vertex.x) - startAngle
+            
+            drawArc(
+                color = if (isSnapped) Color.Green.copy(alpha = 0.7f) else Color(0xFFFF6600).copy(alpha = 0.7f),
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                topLeft = Offset(vertex.x - arcRadius, vertex.y - arcRadius),
+                size = androidx.compose.ui.geometry.Size(arcRadius * 2, arcRadius * 2),
+                style = Stroke(width = if (isSnapped) 4f else 3f, cap = StrokeCap.Round)
             )
         }
     }

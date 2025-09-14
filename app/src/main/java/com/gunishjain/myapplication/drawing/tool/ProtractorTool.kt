@@ -208,4 +208,89 @@ data class ProtractorTool(
             angle = calculateAngle()
         )
     }
+    
+    /**
+     * Common angles for hard snapping (in degrees)
+     */
+    companion object {
+        val COMMON_ANGLES = listOf(30f, 45f, 60f, 90f, 120f, 135f, 150f, 180f)
+        val SNAP_TOLERANCE = 5f // degrees
+    }
+    
+    /**
+     * Find the nearest common angle for snapping
+     */
+    fun findNearestCommonAngle(currentAngle: Float): Float? {
+        val normalizedAngle = (currentAngle + 360f) % 360f
+        val reverseAngle = (360f - normalizedAngle) % 360f
+        
+        for (commonAngle in COMMON_ANGLES) {
+            val diff1 = kotlin.math.abs(normalizedAngle - commonAngle)
+            val diff2 = kotlin.math.abs(normalizedAngle - (commonAngle + 360f))
+            val diff3 = kotlin.math.abs(normalizedAngle - (commonAngle - 360f))
+            val diff4 = kotlin.math.abs(reverseAngle - commonAngle)
+            val diff5 = kotlin.math.abs(reverseAngle - (commonAngle + 360f))
+            val diff6 = kotlin.math.abs(reverseAngle - (commonAngle - 360f))
+            
+            val minDiff = minOf(diff1, diff2, diff3, diff4, diff5, diff6)
+            if (minDiff <= SNAP_TOLERANCE) {
+                return commonAngle
+            }
+        }
+        return null
+    }
+    
+    /**
+     * Calculate the second endpoint position for a given angle from the first line
+     */
+    fun calculateSecondEndpointForAngle(targetAngle: Float): Point {
+        if (firstEndpoint == vertex) return vertex
+        
+        val firstLineAngle = atan2(firstEndpoint.y - vertex.y, firstEndpoint.x - vertex.x)
+        val secondLineAngle = firstLineAngle + Math.toRadians(targetAngle.toDouble()).toFloat()
+        
+        val lineLength = sqrt((firstEndpoint.x - vertex.x).pow(2) + (firstEndpoint.y - vertex.y).pow(2))
+        
+        return Point(
+            x = vertex.x + cos(secondLineAngle) * lineLength,
+            y = vertex.y + sin(secondLineAngle) * lineLength
+        )
+    }
+    
+    /**
+     * Snap the second endpoint to the nearest common angle with force override
+     */
+    fun snapSecondEndpointToCommonAngle(proposedEndpoint: Point, forceOverride: Boolean = false): Point {
+        if (firstEndpoint == vertex) return proposedEndpoint
+        
+        val currentAngle = calculateAngle()
+        val nearestAngle = findNearestCommonAngle(currentAngle)
+        
+        return if (nearestAngle != null && !forceOverride) {
+            calculateSecondEndpointForAngle(nearestAngle)
+        } else {
+            proposedEndpoint
+        }
+    }
+    
+    /**
+     * Check if user is forcing override (dragging far from snapped angle)
+     */
+    fun isForcingOverride(proposedEndpoint: Point): Boolean {
+        if (firstEndpoint == vertex) return false
+        
+        val currentAngle = calculateAngle()
+        val nearestAngle = findNearestCommonAngle(currentAngle)
+        
+        if (nearestAngle == null) return false
+        
+        val snappedEndpoint = calculateSecondEndpointForAngle(nearestAngle)
+        val distanceToSnapped = sqrt(
+            (proposedEndpoint.x - snappedEndpoint.x).pow(2) + 
+            (proposedEndpoint.y - snappedEndpoint.y).pow(2)
+        )
+        
+        // If user drags more than 20 pixels away from snapped position, consider it forced override
+        return distanceToSnapped > 20f
+    }
 }
