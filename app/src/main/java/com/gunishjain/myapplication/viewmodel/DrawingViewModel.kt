@@ -8,6 +8,7 @@ import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.data.DrawingState
 import com.gunishjain.myapplication.data.UndoRedoManager
 import com.gunishjain.myapplication.drawing.SnapEngine
+import com.gunishjain.myapplication.drawing.tool.CompassTool
 import com.gunishjain.myapplication.model.DrawingElement
 import com.gunishjain.myapplication.model.DrawingTool
 import com.gunishjain.myapplication.model.Point
@@ -45,6 +46,13 @@ class DrawingViewModel : ViewModel() {
                 if (action.tool != DrawingTool.Ruler) {
                     newState = newState.copy(
                         rulerTool = newState.rulerTool.copy(isVisible = false)
+                    )
+                }
+                
+                // Clear Compass state when switching to other tools
+                if (action.tool != DrawingTool.Compass) {
+                    newState = newState.copy(
+                        compassTool = newState.compassTool.copy(isVisible = false)
                     )
                 }
                 
@@ -191,6 +199,9 @@ class DrawingViewModel : ViewModel() {
                 } else {
                     _drawingState.value
                 }
+            }
+            is DrawingAction.UpdateCompassTool -> {
+                _drawingState.value.copy(compassTool = action.compassTool)
             }
         }
         

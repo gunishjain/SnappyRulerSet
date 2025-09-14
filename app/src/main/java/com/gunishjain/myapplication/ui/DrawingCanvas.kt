@@ -20,8 +20,10 @@ import com.gunishjain.myapplication.data.DrawingState
 import com.gunishjain.myapplication.drawing.PrecisionHUD
 import com.gunishjain.myapplication.drawing.SnapEngine
 import com.gunishjain.myapplication.drawing.tool.RulerTool
+import com.gunishjain.myapplication.drawing.tool.CompassTool
 import com.gunishjain.myapplication.model.*
 import kotlinx.coroutines.delay
+import kotlin.math.*
 
 
 /**
@@ -46,11 +48,17 @@ fun DrawingCanvas(
     val density = LocalDensity.current
     var currentPath by remember { mutableStateOf<Path?>(null) }
     var rulerStartPoint by remember { mutableStateOf<Point?>(null) }
+    var compassStartPoint by remember { mutableStateOf<Point?>(null) }
+    var currentCompass by remember { mutableStateOf<CompassTool?>(null) }
     
     // Clear ruler state when switching away from ruler tool
     LaunchedEffect(state.currentTool) {
         if (state.currentTool != DrawingTool.Ruler) {
             rulerStartPoint = null
+        }
+        if (state.currentTool != DrawingTool.Compass) {
+            compassStartPoint = null
+            currentCompass = null
         }
     }
     
@@ -114,6 +122,10 @@ fun DrawingCanvas(
                                             )
                                         ))
                             }
+                            DrawingTool.Compass -> {
+                                println("DEBUG: DrawingCanvas - Compass tool tap handling")
+                                // Compass tool - tap does nothing, only drag works
+                            }
                             else -> { /* Other tools */ }
                         }
                     }
@@ -143,6 +155,21 @@ fun DrawingCanvas(
                                 rulerStartPoint = point
                                 currentPath = Path().apply { moveTo(offset.x, offset.y) }
                                 println("DEBUG: DrawingCanvas - Ruler start point set: $rulerStartPoint")
+                            }
+                            DrawingTool.Compass -> {
+                                println("DEBUG: DrawingCanvas - onDragStart - Compass tool drag - Current tool: ${state.currentTool.name}")
+                                // For compass, start drawing a circle
+                                onAction(DrawingAction.StartDrawing(point))
+                                compassStartPoint = point
+                                // Initialize local compass state
+                                currentCompass = CompassTool(
+                                    center = point,
+                                    radius = 0f,
+                                    isVisible = true,
+                                    isDrawing = true
+                                )
+                                onAction(DrawingAction.UpdateCompassTool(currentCompass!!))
+                                println("DEBUG: DrawingCanvas - Compass start point set: $point")
                             }
                             else -> { 
                                 println("DEBUG: DrawingCanvas - onDragStart - Other tool: ${state.currentTool.name}")
@@ -190,6 +217,40 @@ fun DrawingCanvas(
                                     currentPath = newPath
                                 }
                             }
+                            DrawingTool.Compass -> {
+                                // Compass tool - drag to adjust radius and draw circle
+                                println("DEBUG: DrawingCanvas - Compass onDrag - isDrawing: ${state.compassTool.isDrawing}")
+                                println("DEBUG: DrawingCanvas - Compass onDrag - current radius: ${state.compassTool.radius}")
+                                println("DEBUG: DrawingCanvas - Compass onDrag - center: ${state.compassTool.center}")
+                                
+                                // Always update compass during drag if we're in compass mode
+                                val snapResult = if (state.snapEnabled) {
+                                    snapEngine.findBestSnapTarget(point, state.elements)
+                                } else null
+                                
+                                val finalPoint = snapResult?.snappedPoint ?: point
+                                
+                                if (snapResult != null) {
+                                    onAction(DrawingAction.PerformHapticFeedback)
+                                }
+                                
+                                // Use the center from drag start (stored in compassStartPoint)
+                                val currentCenter = compassStartPoint ?: point
+                                
+                                val updatedCompass = CompassTool(
+                                    center = currentCenter,
+                                    radius = sqrt((finalPoint.x - currentCenter.x).pow(2) + (finalPoint.y - currentCenter.y).pow(2)),
+                                    isVisible = true,
+                                    isDrawing = true
+                                )
+                                
+                                // Update local state
+                                currentCompass = updatedCompass
+                                
+                                println("DEBUG: DrawingCanvas - Compass onDrag - new radius: ${updatedCompass.radius}")
+                                println("DEBUG: DrawingCanvas - Compass onDrag - new center: ${updatedCompass.center}")
+                                onAction(DrawingAction.UpdateCompassTool(updatedCompass))
+                            }
                             else -> { /* Other tools */ }
                         }
                     },
@@ -225,6 +286,40 @@ fun DrawingCanvas(
                                 currentPath = null
                                 rulerStartPoint = null
                             }
+                            DrawingTool.Compass -> {
+                                // End compass drawing and create circle element
+                                println("DEBUG: DrawingCanvas - Compass onDragEnd - isDrawing: ${state.compassTool.isDrawing}")
+                                println("DEBUG: DrawingCanvas - Compass onDragEnd - radius: ${state.compassTool.radius}")
+                                
+                                // Use the local compass state from the drag
+                                val lastCompass = currentCompass
+                                if (lastCompass != null && lastCompass.isDrawing && lastCompass.radius > 0) {
+                                    val path = lastCompass.createCirclePath()
+                                    println("DEBUG: DrawingCanvas - Compass onDragEnd - Creating circle element with radius: ${lastCompass.radius}")
+                                    
+                                    onAction(DrawingAction.AddElement(
+                                        DrawingElement.StrokeElement(
+                                            com.gunishjain.myapplication.model.Stroke(
+                                                path = path,
+                                                color = state.strokeColor,
+                                                strokeWidth = state.strokeWidth
+                                            )
+                                        )
+                                    ))
+                                    println("DEBUG: DrawingCanvas - Compass onDragEnd - Circle element added to canvas")
+                                } else {
+                                    println("DEBUG: DrawingCanvas - Compass onDragEnd - NOT creating circle - isDrawing: ${lastCompass?.isDrawing}, radius: ${lastCompass?.radius}")
+                                }
+                                
+                                // Reset compass
+                                onAction(DrawingAction.UpdateCompassTool(
+                                    CompassTool(isVisible = false, isDrawing = false)
+                                ))
+                                onAction(DrawingAction.EndDrawing(Point(0f, 0f)))
+                                compassStartPoint = null
+                                currentCompass = null
+                                println("DEBUG: DrawingCanvas - Compass onDragEnd - Compass reset")
+                            }
                             else -> { /* Other tools */ }
                         }
                     }
@@ -259,6 +354,24 @@ fun DrawingCanvas(
                 }
                 
                 // Ruler tool now draws straight lines directly, no visible ruler object
+                
+                // Draw Compass tool only when actively drawing and radius > 0
+                if (currentCompass != null && currentCompass!!.isVisible && currentCompass!!.isDrawing && currentCompass!!.radius > 0 && state.isDrawing) {
+                    println("DEBUG: DrawingCanvas - Drawing compass - radius: ${currentCompass!!.radius}, center: ${currentCompass!!.center}")
+                    // Draw circle outline with current stroke color and width
+                    drawCircle(
+                        color = state.strokeColor.copy(alpha = 0.5f),
+                        radius = currentCompass!!.radius,
+                        center = Offset(currentCompass!!.center.x, currentCompass!!.center.y),
+                        style = Stroke(
+                            width = state.strokeWidth,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                } else {
+                    println("DEBUG: DrawingCanvas - NOT drawing compass - isVisible: ${currentCompass?.isVisible}, isDrawing: ${currentCompass?.isDrawing}, radius: ${currentCompass?.radius}, state.isDrawing: ${state.isDrawing}")
+                }
                 
                 // Draw snap indicators if snap is enabled and we're drawing
                 if (state.snapEnabled && state.isDrawing) {

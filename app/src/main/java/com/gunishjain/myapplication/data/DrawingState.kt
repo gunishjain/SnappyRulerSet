@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import com.gunishjain.myapplication.drawing.tool.RulerTool
+import com.gunishjain.myapplication.drawing.tool.CompassTool
 import com.gunishjain.myapplication.model.DrawingElement
 import com.gunishjain.myapplication.model.DrawingTool
 import com.gunishjain.myapplication.model.Point
@@ -25,6 +26,7 @@ data class DrawingState(
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val rulerTool: RulerTool = RulerTool(),
+    val compassTool: CompassTool = CompassTool(),
     val gridSpacing: Float = 20f, // Default grid spacing in pixels
     val lastAction: DrawingAction? = null
 )
@@ -55,6 +57,7 @@ sealed class DrawingAction {
     data class StartRulerRotation(val point: Point) : DrawingAction()
     data class UpdateRulerRotation(val point: Point) : DrawingAction()
     data class EndRulerRotation(val point: Point) : DrawingAction()
+    data class UpdateCompassTool(val compassTool: CompassTool) : DrawingAction()
     data object Undo : DrawingAction()
     data object Redo : DrawingAction()
     data object PerformHapticFeedback : DrawingAction()
