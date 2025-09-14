@@ -8,8 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
-
-
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateOf
@@ -153,27 +152,26 @@ fun SnappyRulerSetApp() {
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Tool selection overlay
-            ToolOverlay(
-                currentTool = drawingState.currentTool,
-                onToolSelected = { tool ->
-                    viewModel.handleAction(DrawingAction.SetTool(tool))
-                }
-            )
-            
-            // Drawing canvas
+            // Drawing canvas - covers entire area
             DrawingCanvas(
                 state = drawingState,
                 snapEngine = viewModel.snapEngine,
                 onAction = viewModel::handleAction,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // Tool selection overlay - positioned on top
+            ToolOverlay(
+                currentTool = drawingState.currentTool,
+                onToolSelected = { tool ->
+                    viewModel.handleAction(DrawingAction.SetTool(tool))
+                },
+                modifier = Modifier.align(Alignment.TopCenter)
             )
         }
     }
