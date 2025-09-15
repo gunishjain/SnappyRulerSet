@@ -76,13 +76,13 @@ private fun ToolChip(
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = if (isSelected) {
-        tool.color.copy(alpha = 0.2f)
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
     } else {
         MaterialTheme.colorScheme.surfaceVariant
     }
     
     val borderColor = if (isSelected) {
-        tool.color
+        MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.outline
     }
@@ -108,7 +108,7 @@ private fun ToolChip(
                 text = tool.name,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) tool.color else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

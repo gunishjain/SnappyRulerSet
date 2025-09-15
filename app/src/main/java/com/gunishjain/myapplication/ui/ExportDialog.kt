@@ -21,7 +21,7 @@ fun ExportDialog(
     modifier: Modifier = Modifier
 ) {
     var selectedFormat by remember { mutableStateOf(BitmapExporter.ExportFormat.PNG) }
-    var quality by remember { mutableStateOf(90) }
+    var quality by remember { mutableIntStateOf(90) }
     
     AlertDialog(
         onDismissRequest = onDismiss,
