@@ -112,7 +112,7 @@ fun DrawingCanvas(
             currentProtractor = null
         }
         // Keep set square visible when switching tools - don't clear it
-        // Only clear if explicitly switching to a different tool and user wants to hide it
+        // Set square remains visible as a reference tool for other drawing tools
         // Clear path state when switching tools
         currentPath = null
         currentPathPoints = emptyList()
@@ -125,20 +125,27 @@ fun DrawingCanvas(
     
     // Sync local set square state with global state
     LaunchedEffect(state.setSquareTool) {
-        if (state.setSquareTool.isVisible && currentSetSquare == null) {
-            currentSetSquare = state.setSquareTool
-            println("DEBUG: DrawingCanvas - SetSquare synced from global state")
-        } else if (state.setSquareTool.isVisible && currentSetSquare != null) {
-            // Update local state if global state has changes (e.g., from variant toggle, resizing state changes)
-            val needsUpdate = state.setSquareTool.variant != currentSetSquare!!.variant ||
-                             state.setSquareTool.isResizing != currentSetSquare!!.isResizing ||
-                             state.setSquareTool.draggedVertexIndex != currentSetSquare!!.draggedVertexIndex ||
-                             state.setSquareTool.size != currentSetSquare!!.size
-            
-            if (needsUpdate) {
+        if (state.setSquareTool.isVisible) {
+            if (currentSetSquare == null) {
                 currentSetSquare = state.setSquareTool
-                println("DEBUG: DrawingCanvas - SetSquare state synced from global state - variant: ${state.setSquareTool.variant}, isResizing: ${state.setSquareTool.isResizing}, draggedVertex: ${state.setSquareTool.draggedVertexIndex}")
+                println("DEBUG: DrawingCanvas - SetSquare synced from global state")
+            } else {
+                // Update local state if global state has changes (e.g., from variant toggle, resizing state changes)
+                val needsUpdate = state.setSquareTool.variant != currentSetSquare!!.variant ||
+                                 state.setSquareTool.isResizing != currentSetSquare!!.isResizing ||
+                                 state.setSquareTool.draggedVertexIndex != currentSetSquare!!.draggedVertexIndex ||
+                                 state.setSquareTool.size != currentSetSquare!!.size
+                
+                if (needsUpdate) {
+                    currentSetSquare = state.setSquareTool
+                    println("DEBUG: DrawingCanvas - SetSquare state synced from global state - variant: ${state.setSquareTool.variant}, isResizing: ${state.setSquareTool.isResizing}, draggedVertex: ${state.setSquareTool.draggedVertexIndex}")
+                }
             }
+        } else {
+            // Clear local state when tool becomes invisible (only when explicitly toggled off)
+            currentSetSquare = null
+            setSquareStartPoint = null
+            println("DEBUG: DrawingCanvas - SetSquare local state cleared")
         }
     }
     
@@ -320,6 +327,17 @@ fun DrawingCanvas(
                                 }
                             }
                             else -> { /* Other tools */ }
+                        }
+                    },
+                    onLongPress = { offset ->
+                        val point = Point(offset.x, offset.y)
+                        println("DEBUG: DrawingCanvas - Long press detected at: $point")
+                        
+                        // Check if long press is on set square to hide it
+                        val currentSetSquareState = currentSetSquare
+                        if (currentSetSquareState != null && isPointInsideSetSquare(point, currentSetSquareState)) {
+                            println("DEBUG: DrawingCanvas - Long press on set square - hiding it")
+                            onAction(DrawingAction.HideSetSquare)
                         }
                     }
                 )

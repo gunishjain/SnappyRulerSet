@@ -73,6 +73,7 @@ sealed class DrawingAction {
     data object EndSetSquareResize : DrawingAction()
     data class SetSetSquareVariant(val variant: SetSquareVariant) : DrawingAction()
     data object ToggleSetSquareVariant : DrawingAction()
+    data object HideSetSquare : DrawingAction()
     data object Undo : DrawingAction()
     data object Redo : DrawingAction()
     data object PerformHapticFeedback : DrawingAction()

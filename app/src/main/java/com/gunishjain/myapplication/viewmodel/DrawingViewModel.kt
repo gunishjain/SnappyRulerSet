@@ -9,6 +9,8 @@ import com.gunishjain.myapplication.data.DrawingState
 import com.gunishjain.myapplication.data.UndoRedoManager
 import com.gunishjain.myapplication.drawing.SnapEngine
 import com.gunishjain.myapplication.drawing.tool.CompassTool
+import com.gunishjain.myapplication.drawing.tool.ProtractorTool
+import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.SetSquareTool
 import com.gunishjain.myapplication.drawing.tool.SetSquareVariant
 import com.gunishjain.myapplication.model.DrawingElement
@@ -58,12 +60,13 @@ class DrawingViewModel : ViewModel() {
                     )
                 }
                 
-                // Clear SetSquare state when switching to other tools
-                if (action.tool != DrawingTool.SetSquare) {
-                    newState = newState.copy(
-                        setSquareTool = newState.setSquareTool.copy(isVisible = false)
-                    )
+                // Handle SetSquare tool selection
+                if (action.tool == DrawingTool.SetSquare) {
+                    // Don't automatically create or show set square when tool is selected
+                    // Wait for user to tap on canvas to place it
+                    // If set square is already visible, just switch to SetSquare tool for interaction
                 }
+                // Don't clear set square when switching to other tools - keep it visible
                 
                 println("DEBUG: DrawingViewModel - Final tool: ${newState.currentTool.name}")
                 newState
@@ -93,7 +96,12 @@ class DrawingViewModel : ViewModel() {
                     _drawingState.value.copy(
                         elements = emptyList(),
                         canUndo = false,
-                        canRedo = false
+                        canRedo = false,
+                        // Reset all tool states when clearing canvas
+                        rulerTool = RulerTool(),
+                        compassTool = CompassTool(),
+                        protractorTool = ProtractorTool(),
+                        setSquareTool = SetSquareTool()
                     )
                 } else {
                     // If canvas has content, save current state before clearing
@@ -101,7 +109,12 @@ class DrawingViewModel : ViewModel() {
                     _drawingState.value.copy(
                         elements = emptyList(),
                         canUndo = undoRedoManager.canUndo(),
-                        canRedo = undoRedoManager.canRedo()
+                        canRedo = undoRedoManager.canRedo(),
+                        // Reset all tool states when clearing canvas
+                        rulerTool = RulerTool(),
+                        compassTool = CompassTool(),
+                        protractorTool = ProtractorTool(),
+                        setSquareTool = SetSquareTool()
                     )
                 }
             }
@@ -249,6 +262,11 @@ class DrawingViewModel : ViewModel() {
                 }
                 _drawingState.value.copy(
                     setSquareTool = _drawingState.value.setSquareTool.copy(variant = newVariant)
+                )
+            }
+            is DrawingAction.HideSetSquare -> {
+                _drawingState.value.copy(
+                    setSquareTool = _drawingState.value.setSquareTool.copy(isVisible = false)
                 )
             }
             is DrawingAction.SetSetSquareVariant -> {

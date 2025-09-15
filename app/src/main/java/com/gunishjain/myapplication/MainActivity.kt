@@ -17,6 +17,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gunishjain.myapplication.data.DrawingAction
@@ -114,12 +115,18 @@ fun SnappyRulerSetApp() {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("SnappyRulerSet") },
+                title = {
+                    Text(
+                        "SnappyRulerSet",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                },
                 actions = {
                     // Undo button
                     IconButton(
                         onClick = { viewModel.handleAction(DrawingAction.Undo) },
-                        enabled = drawingState.canUndo
+                        enabled = drawingState.canUndo,
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = ImageVector.vectorResource(id = R.drawable.undo),
@@ -128,14 +135,16 @@ fun SnappyRulerSetApp() {
                                 MaterialTheme.colorScheme.onSurface
                             } else {
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            }
+                            },
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     
                     // Redo button
                     IconButton(
                         onClick = { viewModel.handleAction(DrawingAction.Redo) },
-                        enabled = drawingState.canRedo
+                        enabled = drawingState.canRedo,
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = ImageVector.vectorResource(id = R.drawable.redo),
@@ -144,7 +153,8 @@ fun SnappyRulerSetApp() {
                                 MaterialTheme.colorScheme.onSurface
                             } else {
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            }
+                            },
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     
@@ -152,7 +162,8 @@ fun SnappyRulerSetApp() {
                     IconButton(
                         onClick = { 
                             viewModel.handleAction(DrawingAction.ToggleSnap(!drawingState.snapEnabled))
-                        }
+                        },
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = if (drawingState.snapEnabled) 
@@ -164,7 +175,8 @@ fun SnappyRulerSetApp() {
                                 MaterialTheme.colorScheme.primary
                             } else {
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            }
+                            },
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     
@@ -174,9 +186,14 @@ fun SnappyRulerSetApp() {
                     
                     Box {
                         TextButton(
-                            onClick = { expanded = true }
+                            onClick = { expanded = true },
+                            modifier = Modifier.padding(horizontal = 2.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Text("Grid: ${drawingState.gridSpacing.toInt()}px")
+                            Text(
+                                "Grid: ${drawingState.gridSpacing.toInt()}px",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                         
                         DropdownMenu(
@@ -197,9 +214,13 @@ fun SnappyRulerSetApp() {
                     
                     // Clear button
                     TextButton(
-                        onClick = { viewModel.handleAction(DrawingAction.ClearCanvas) }
+                        onClick = { viewModel.handleAction(DrawingAction.ClearCanvas) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text("Clear")
+                        Text(
+                            "Clear",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             )
