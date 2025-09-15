@@ -22,14 +22,8 @@ sealed class DrawingTool(
         color = Color.Blue
     )
     
-    data object SetSquare45 : DrawingTool(
-        name = "Set Square 45°",
-        icon = "📐",
-        color = Color.Green
-    )
-    
-    data object SetSquare30 : DrawingTool(
-        name = "Set Square 30°",
+    data object SetSquare : DrawingTool(
+        name = "Set Square",
         icon = "📐",
         color = Color.Green
     )
@@ -53,8 +47,7 @@ sealed class DrawingTool(
 val ALL_DRAWING_TOOLS = listOf(
     DrawingTool.Freehand,
     DrawingTool.Ruler,
-    DrawingTool.SetSquare45,
-    DrawingTool.SetSquare30,
+    DrawingTool.SetSquare,
     DrawingTool.Protractor,
     DrawingTool.Compass
 )

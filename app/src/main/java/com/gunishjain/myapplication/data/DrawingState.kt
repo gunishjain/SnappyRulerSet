@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Path
 import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.CompassTool
 import com.gunishjain.myapplication.drawing.tool.ProtractorTool
+import com.gunishjain.myapplication.drawing.tool.SetSquareTool
+import com.gunishjain.myapplication.drawing.tool.SetSquareVariant
 import com.gunishjain.myapplication.model.DrawingElement
 import com.gunishjain.myapplication.model.DrawingTool
 import com.gunishjain.myapplication.model.Point
@@ -29,6 +31,7 @@ data class DrawingState(
     val rulerTool: RulerTool = RulerTool(),
     val compassTool: CompassTool = CompassTool(),
     val protractorTool: ProtractorTool = ProtractorTool(),
+    val setSquareTool: SetSquareTool = SetSquareTool(),
     val gridSpacing: Float = 20f, // Default grid spacing in pixels
     val lastAction: DrawingAction? = null
 )
@@ -61,6 +64,15 @@ sealed class DrawingAction {
     data class EndRulerRotation(val point: Point) : DrawingAction()
     data class UpdateCompassTool(val compassTool: CompassTool) : DrawingAction()
     data class UpdateProtractorTool(val protractorTool: ProtractorTool) : DrawingAction()
+    data class UpdateSetSquareTool(val setSquareTool: SetSquareTool) : DrawingAction()
+    data class StartSetSquareDrag(val point: Point) : DrawingAction()
+    data class UpdateSetSquareDrag(val point: Point) : DrawingAction()
+    data class EndSetSquareDrag(val point: Point) : DrawingAction()
+    data class StartSetSquareResize(val vertexIndex: Int) : DrawingAction()
+    data class UpdateSetSquareResize(val point: Point) : DrawingAction()
+    data object EndSetSquareResize : DrawingAction()
+    data class SetSetSquareVariant(val variant: SetSquareVariant) : DrawingAction()
+    data object ToggleSetSquareVariant : DrawingAction()
     data object Undo : DrawingAction()
     data object Redo : DrawingAction()
     data object PerformHapticFeedback : DrawingAction()

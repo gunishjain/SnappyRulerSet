@@ -9,6 +9,8 @@ import com.gunishjain.myapplication.data.DrawingState
 import com.gunishjain.myapplication.data.UndoRedoManager
 import com.gunishjain.myapplication.drawing.SnapEngine
 import com.gunishjain.myapplication.drawing.tool.CompassTool
+import com.gunishjain.myapplication.drawing.tool.SetSquareTool
+import com.gunishjain.myapplication.drawing.tool.SetSquareVariant
 import com.gunishjain.myapplication.model.DrawingElement
 import com.gunishjain.myapplication.model.DrawingTool
 import com.gunishjain.myapplication.model.Point
@@ -53,6 +55,13 @@ class DrawingViewModel : ViewModel() {
                 if (action.tool != DrawingTool.Compass) {
                     newState = newState.copy(
                         compassTool = newState.compassTool.copy(isVisible = false)
+                    )
+                }
+                
+                // Clear SetSquare state when switching to other tools
+                if (action.tool != DrawingTool.SetSquare) {
+                    newState = newState.copy(
+                        setSquareTool = newState.setSquareTool.copy(isVisible = false)
                     )
                 }
                 
@@ -205,6 +214,68 @@ class DrawingViewModel : ViewModel() {
             }
             is DrawingAction.UpdateProtractorTool -> {
                 _drawingState.value.copy(protractorTool = action.protractorTool)
+            }
+            is DrawingAction.UpdateSetSquareTool -> {
+                _drawingState.value.copy(setSquareTool = action.setSquareTool)
+            }
+            is DrawingAction.StartSetSquareDrag -> {
+                _drawingState.value.copy(
+                    setSquareTool = _drawingState.value.setSquareTool.copy(
+                        isDragging = true,
+                        center = action.point,
+                        isVisible = true
+                    )
+                )
+            }
+            is DrawingAction.UpdateSetSquareDrag -> {
+                if (_drawingState.value.setSquareTool.isDragging) {
+                    val updatedSetSquare = _drawingState.value.setSquareTool.copy(center = action.point)
+                    _drawingState.value.copy(setSquareTool = updatedSetSquare)
+                } else {
+                    _drawingState.value
+                }
+            }
+            is DrawingAction.EndSetSquareDrag -> {
+                _drawingState.value.copy(
+                    setSquareTool = _drawingState.value.setSquareTool.copy(isDragging = false)
+                )
+            }
+            is DrawingAction.ToggleSetSquareVariant -> {
+                val currentVariant = _drawingState.value.setSquareTool.variant
+                val newVariant = if (currentVariant == SetSquareVariant.FORTY_FIVE) {
+                    SetSquareVariant.THIRTY_SIXTY
+                } else {
+                    SetSquareVariant.FORTY_FIVE
+                }
+                _drawingState.value.copy(
+                    setSquareTool = _drawingState.value.setSquareTool.copy(variant = newVariant)
+                )
+            }
+            is DrawingAction.SetSetSquareVariant -> {
+                _drawingState.value.copy(
+                    setSquareTool = _drawingState.value.setSquareTool.copy(variant = action.variant)
+                )
+            }
+            is DrawingAction.StartSetSquareResize -> {
+                _drawingState.value.copy(
+                    setSquareTool = _drawingState.value.setSquareTool.startResizing(action.vertexIndex)
+                )
+            }
+            is DrawingAction.UpdateSetSquareResize -> {
+                if (_drawingState.value.setSquareTool.isResizing) {
+                    val updatedSetSquare = _drawingState.value.setSquareTool.resizeByVertex(
+                        _drawingState.value.setSquareTool.draggedVertexIndex,
+                        action.point
+                    )
+                    _drawingState.value.copy(setSquareTool = updatedSetSquare)
+                } else {
+                    _drawingState.value
+                }
+            }
+            is DrawingAction.EndSetSquareResize -> {
+                _drawingState.value.copy(
+                    setSquareTool = _drawingState.value.setSquareTool.stopResizing()
+                )
             }
         }
         

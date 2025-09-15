@@ -40,7 +40,7 @@ object HapticFeedbackUtil {
             // Create a gentle, short vibration effect
             val vibrationEffect = VibrationEffect.createOneShot(
                 10, // 10 milliseconds duration
-                VibrationEffect.DEFAULT_AMPLITUDE / 2 // Half the default amplitude for gentleness
+                VibrationEffect.DEFAULT_AMPLITUDE // Use default amplitude
             )
             vibrator.vibrate(vibrationEffect)
         } else {

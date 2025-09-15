@@ -15,12 +15,16 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.cos
+import kotlin.math.sin
 import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.data.DrawingState
 import com.gunishjain.myapplication.drawing.SnapEngine
 import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.CompassTool
 import com.gunishjain.myapplication.drawing.tool.ProtractorTool
+import com.gunishjain.myapplication.drawing.tool.SetSquareTool
+import com.gunishjain.myapplication.drawing.tool.SetSquareVariant
 import com.gunishjain.myapplication.model.*
 import kotlinx.coroutines.delay
 import kotlin.math.*
@@ -53,6 +57,8 @@ fun DrawingCanvas(
     var currentCompass by remember { mutableStateOf<CompassTool?>(null) }
     var protractorStartPoint by remember { mutableStateOf<Point?>(null) }
     var currentProtractor by remember { mutableStateOf<ProtractorTool?>(null) }
+    var setSquareStartPoint by remember { mutableStateOf<Point?>(null) }
+    var currentSetSquare by remember { mutableStateOf<SetSquareTool?>(null) }
     
     // Clear ruler state when switching away from ruler tool
     LaunchedEffect(state.currentTool) {
@@ -109,6 +115,8 @@ fun DrawingCanvas(
             protractorStartPoint = null
             currentProtractor = null
         }
+        // Keep set square visible when switching tools - don't clear it
+        // Only clear if explicitly switching to a different tool and user wants to hide it
         // Clear path state when switching tools
         currentPath = null
         currentPathPoints = emptyList()
@@ -117,6 +125,25 @@ fun DrawingCanvas(
     // Debug: Log current tool changes
     LaunchedEffect(state.currentTool) {
         println("DEBUG: DrawingCanvas - Tool changed to: ${state.currentTool.name}")
+    }
+    
+    // Sync local set square state with global state
+    LaunchedEffect(state.setSquareTool) {
+        if (state.setSquareTool.isVisible && currentSetSquare == null) {
+            currentSetSquare = state.setSquareTool
+            println("DEBUG: DrawingCanvas - SetSquare synced from global state")
+        } else if (state.setSquareTool.isVisible && currentSetSquare != null) {
+            // Update local state if global state has changes (e.g., from variant toggle, resizing state changes)
+            val needsUpdate = state.setSquareTool.variant != currentSetSquare!!.variant ||
+                             state.setSquareTool.isResizing != currentSetSquare!!.isResizing ||
+                             state.setSquareTool.draggedVertexIndex != currentSetSquare!!.draggedVertexIndex ||
+                             state.setSquareTool.size != currentSetSquare!!.size
+            
+            if (needsUpdate) {
+                currentSetSquare = state.setSquareTool
+                println("DEBUG: DrawingCanvas - SetSquare state synced from global state - variant: ${state.setSquareTool.variant}, isResizing: ${state.setSquareTool.isResizing}, draggedVertex: ${state.setSquareTool.draggedVertexIndex}")
+            }
+        }
     }
     
     Box(modifier = modifier.fillMaxSize()) {
@@ -205,6 +232,92 @@ fun DrawingCanvas(
                                     println("DEBUG: DrawingCanvas - Starting new protractor measurement")
                                 }
                             }
+                            DrawingTool.SetSquare -> {
+                                println("DEBUG: DrawingCanvas - SetSquare tool tap handling")
+                                // Apply snapping if enabled
+                                val snapResult = if (state.snapEnabled) {
+                                    snapEngine.findBestSnapTarget(point, state.elements)
+                                } else null
+                                
+                                // Use snapped point if available
+                                val finalPoint = snapResult?.snappedPoint ?: point
+                                
+                                // Trigger haptic feedback if snapped
+                                if (snapResult != null) {
+                                    onAction(DrawingAction.PerformHapticFeedback)
+                                }
+                                
+                                val currentSetSquareState = currentSetSquare
+                                if (currentSetSquareState != null) {
+                                    println("DEBUG: DrawingCanvas - Checking interactions for point: $finalPoint")
+                                    println("DEBUG: DrawingCanvas - SetSquare center: ${currentSetSquareState.center}")
+                                    println("DEBUG: DrawingCanvas - Current isResizing: ${currentSetSquareState.isResizing}")
+                                    
+                                    // Check if tap is on a vertex for resizing
+                                    val vertexIndex = currentSetSquareState.isPointNearVertex(finalPoint, 40f)
+                                    println("DEBUG: DrawingCanvas - Vertex index: $vertexIndex")
+                                    
+                                    if (vertexIndex >= 0) {
+                                        // If we were already resizing a different vertex, end that first
+                                        if (currentSetSquareState.isResizing && currentSetSquareState.draggedVertexIndex != vertexIndex) {
+                                            println("DEBUG: DrawingCanvas - Tap: Switching from vertex ${currentSetSquareState.draggedVertexIndex} to vertex $vertexIndex")
+                                            onAction(DrawingAction.EndSetSquareResize)
+                                        }
+                                        
+                                        // Start resizing by dragging this vertex
+                                        onAction(DrawingAction.StartSetSquareResize(vertexIndex))
+                                        println("DEBUG: DrawingCanvas - SetSquare vertex $vertexIndex selected for resizing")
+                                    } else if (isPointNearSetSquareButton(finalPoint, currentSetSquareState)) {
+                                        // If we were resizing, end that first
+                                        if (currentSetSquareState.isResizing) {
+                                            println("DEBUG: DrawingCanvas - Tap: Ending resize to toggle variant")
+                                            onAction(DrawingAction.EndSetSquareResize)
+                                        }
+                                        
+                                        // Toggle variant
+                                        println("DEBUG: DrawingCanvas - SetSquare button tapped at: $finalPoint")
+                                        onAction(DrawingAction.ToggleSetSquareVariant)
+                                        println("DEBUG: DrawingCanvas - SetSquare variant toggled")
+                                    } else if (isPointInsideSetSquare(finalPoint, currentSetSquareState)) {
+                                        // If we were resizing, end that first
+                                        if (currentSetSquareState.isResizing) {
+                                            println("DEBUG: DrawingCanvas - Tap: Ending resize to move set square")
+                                            onAction(DrawingAction.EndSetSquareResize)
+                                        }
+                                        
+                                        // Only move if touching inside the triangle
+                                        val updatedSetSquare = currentSetSquareState.copy(center = finalPoint)
+                                        currentSetSquare = updatedSetSquare
+                                        onAction(DrawingAction.UpdateSetSquareTool(updatedSetSquare))
+                                        println("DEBUG: DrawingCanvas - SetSquare moved to: $finalPoint")
+                                    } else {
+                                        // If we were resizing, end that first
+                                        if (currentSetSquareState.isResizing) {
+                                            println("DEBUG: DrawingCanvas - Tap: Ending resize to place new set square")
+                                            onAction(DrawingAction.EndSetSquareResize)
+                                        }
+                                        
+                                        // Place new set square at this location
+                                        val initialSetSquare = SetSquareTool(
+                                            center = finalPoint,
+                                            isVisible = true
+                                        )
+                                        currentSetSquare = initialSetSquare
+                                        onAction(DrawingAction.UpdateSetSquareTool(initialSetSquare))
+                                        println("DEBUG: DrawingCanvas - New SetSquare placed at: $finalPoint")
+                                    }
+                                } else {
+                                    // Place new set square
+                                    setSquareStartPoint = finalPoint
+                                    val initialSetSquare = SetSquareTool(
+                                        center = finalPoint,
+                                        isVisible = true
+                                    )
+                                    currentSetSquare = initialSetSquare
+                                    onAction(DrawingAction.UpdateSetSquareTool(initialSetSquare))
+                                    println("DEBUG: DrawingCanvas - SetSquare placed at: $finalPoint")
+                                }
+                            }
                             else -> { /* Other tools */ }
                         }
                     }
@@ -285,6 +398,56 @@ fun DrawingCanvas(
                                     currentProtractor = newProtractor
                                     onAction(DrawingAction.UpdateProtractorTool(newProtractor))
                                     println("DEBUG: DrawingCanvas - Starting new protractor measurement via drag")
+                                }
+                            }
+                            DrawingTool.SetSquare -> {
+                                println("DEBUG: DrawingCanvas - onDragStart - SetSquare tool drag")
+                                val currentSetSquareState = currentSetSquare
+                                if (currentSetSquareState != null) {
+                                    println("DEBUG: DrawingCanvas - onDragStart - Checking vertex detection for point: $point")
+                                    println("DEBUG: DrawingCanvas - onDragStart - SetSquare center: ${currentSetSquareState.center}")
+                                    println("DEBUG: DrawingCanvas - onDragStart - Current isResizing: ${currentSetSquareState.isResizing}")
+                                    println("DEBUG: DrawingCanvas - onDragStart - Current draggedVertexIndex: ${currentSetSquareState.draggedVertexIndex}")
+                                    
+                                    // Always check for vertex detection first, regardless of current state
+                                    val vertexIndex = currentSetSquareState.isPointNearVertex(point, 40f)
+                                    println("DEBUG: DrawingCanvas - onDragStart - Vertex index: $vertexIndex")
+                                    
+                                    if (vertexIndex >= 0) {
+                                        // If we were already resizing a different vertex, end that first
+                                        if (currentSetSquareState.isResizing && currentSetSquareState.draggedVertexIndex != vertexIndex) {
+                                            println("DEBUG: DrawingCanvas - onDragStart - Switching from vertex ${currentSetSquareState.draggedVertexIndex} to vertex $vertexIndex")
+                                            onAction(DrawingAction.EndSetSquareResize)
+                                        }
+                                        
+                                        // Start resizing by dragging this vertex
+                                        onAction(DrawingAction.StartSetSquareResize(vertexIndex))
+                                        println("DEBUG: DrawingCanvas - SetSquare vertex $vertexIndex selected for resizing")
+                                    } else if (isPointInsideSetSquare(point, currentSetSquareState)) {
+                                        // If we were resizing, end that first
+                                        if (currentSetSquareState.isResizing) {
+                                            println("DEBUG: DrawingCanvas - onDragStart - Ending resize to start moving")
+                                            onAction(DrawingAction.EndSetSquareResize)
+                                        }
+                                        
+                                        // Start moving the set square
+                                        onAction(DrawingAction.StartDrawing(point))
+                                        setSquareStartPoint = point
+                                        println("DEBUG: DrawingCanvas - SetSquare start moving from: $point")
+                                    } else {
+                                        println("DEBUG: DrawingCanvas - onDragStart - No vertex or inside triangle detected")
+                                    }
+                                } else {
+                                    // Create new set square
+                                    onAction(DrawingAction.StartDrawing(point))
+                                    setSquareStartPoint = point
+                                    val initialSetSquare = SetSquareTool(
+                                        center = point,
+                                        isVisible = true
+                                    )
+                                    currentSetSquare = initialSetSquare
+                                    onAction(DrawingAction.UpdateSetSquareTool(initialSetSquare))
+                                    println("DEBUG: DrawingCanvas - SetSquare start point set: $point")
                                 }
                             }
                             else -> { 
@@ -422,6 +585,55 @@ fun DrawingCanvas(
                                     
                                     currentProtractor = updatedProtractor
                                     onAction(DrawingAction.UpdateProtractorTool(updatedProtractor))
+                                }
+                            }
+                            DrawingTool.SetSquare -> {
+                                // SetSquare tool - drag to move or resize the set square
+                                println("DEBUG: DrawingCanvas - SetSquare onDrag")
+                                val snapResult = if (state.snapEnabled) {
+                                    snapEngine.findBestSnapTarget(point, state.elements)
+                                } else null
+                                
+                                val finalPoint = snapResult?.snappedPoint ?: point
+                                
+                                if (snapResult != null) {
+                                    onAction(DrawingAction.PerformHapticFeedback)
+                                }
+                                
+                                val currentSetSquareState = currentSetSquare
+                                if (currentSetSquareState != null) {
+                                    println("DEBUG: DrawingCanvas - onDrag - isResizing: ${currentSetSquareState.isResizing}, draggedVertexIndex: ${currentSetSquareState.draggedVertexIndex}")
+                                    
+                                    if (currentSetSquareState.isResizing) {
+                                        // Resize by dragging vertex
+                                        println("DEBUG: DrawingCanvas - Resizing vertex ${currentSetSquareState.draggedVertexIndex} to: $finalPoint")
+                                        onAction(DrawingAction.UpdateSetSquareResize(finalPoint))
+                                        
+                                        // Update local state immediately for responsive UI
+                                        val resizedSetSquare = currentSetSquareState.resizeByVertex(
+                                            currentSetSquareState.draggedVertexIndex,
+                                            finalPoint
+                                        )
+                                        currentSetSquare = resizedSetSquare
+                                        println("DEBUG: DrawingCanvas - SetSquare resized to size: ${resizedSetSquare.size}")
+                                    } else if (isPointInsideSetSquare(finalPoint, currentSetSquareState)) {
+                                        // Move set square only if dragging inside the triangle
+                                        val updatedSetSquare = currentSetSquareState.copy(center = finalPoint)
+                                        currentSetSquare = updatedSetSquare
+                                        onAction(DrawingAction.UpdateSetSquareTool(updatedSetSquare))
+                                        println("DEBUG: DrawingCanvas - SetSquare moved to: $finalPoint")
+                                    } else {
+                                        println("DEBUG: DrawingCanvas - onDrag - No action taken (not resizing, not inside triangle)")
+                                    }
+                                } else {
+                                    // Initialize set square if it doesn't exist
+                                    val initialSetSquare = SetSquareTool(
+                                        center = finalPoint,
+                                        isVisible = true
+                                    )
+                                    currentSetSquare = initialSetSquare
+                                    onAction(DrawingAction.UpdateSetSquareTool(initialSetSquare))
+                                    println("DEBUG: DrawingCanvas - SetSquare initialized during drag at: $finalPoint")
                                 }
                             }
                             else -> { /* Other tools */ }
@@ -573,6 +785,20 @@ fun DrawingCanvas(
                                 }
                                 onAction(DrawingAction.EndDrawing(Point(0f, 0f)))
                             }
+                            DrawingTool.SetSquare -> {
+                                // End set square dragging or resizing
+                                println("DEBUG: DrawingCanvas - SetSquare onDragEnd")
+                                val currentSetSquareState = currentSetSquare
+                                if (currentSetSquareState != null && currentSetSquareState.isResizing) {
+                                    onAction(DrawingAction.EndSetSquareResize)
+                                    
+                                    // Update local state to reflect the end of resizing
+                                    val updatedSetSquare = currentSetSquareState.stopResizing()
+                                    currentSetSquare = updatedSetSquare
+                                    println("DEBUG: DrawingCanvas - SetSquare resizing ended, local state updated")
+                                }
+                                onAction(DrawingAction.EndDrawing(Point(0f, 0f)))
+                            }
                             else -> { /* Other tools */ }
                         }
                     }
@@ -632,6 +858,14 @@ fun DrawingCanvas(
                     drawProtractor(currentProtractor!!, state.strokeColor, state.strokeWidth)
                 } else {
                     println("DEBUG: DrawingCanvas - NOT drawing protractor - isVisible: ${currentProtractor?.isVisible}")
+                }
+                
+                // Draw SetSquare tool
+                if (currentSetSquare != null && currentSetSquare!!.isVisible) {
+                    println("DEBUG: DrawingCanvas - Drawing set square - variant: ${currentSetSquare!!.variant}")
+                    drawSetSquare(currentSetSquare!!, state.strokeColor, state.strokeWidth)
+                } else {
+                    println("DEBUG: DrawingCanvas - NOT drawing set square - isVisible: ${currentSetSquare?.isVisible}")
                 }
                 
                 // Draw snap indicators if snap is enabled and we're drawing
@@ -834,3 +1068,169 @@ private fun DrawScope.drawProtractor(
         }
     }
 }
+
+/**
+ * Draw the set square tool with angle button
+ */
+private fun DrawScope.drawSetSquare(
+    setSquare: SetSquareTool,
+    strokeColor: androidx.compose.ui.graphics.Color,
+    strokeWidth: Float
+) {
+    val vertices = setSquare.getVertices()
+    val path = Path()
+    
+    // Create triangle path
+    path.moveTo(vertices[0].x, vertices[0].y)
+    path.lineTo(vertices[1].x, vertices[1].y)
+    path.lineTo(vertices[2].x, vertices[2].y)
+    path.close()
+    
+    // Draw the triangle with semi-transparent fill
+    drawPath(
+        path = path,
+        color = strokeColor.copy(alpha = 0.3f)
+    )
+    
+    // Draw the triangle outline
+    drawPath(
+        path = path,
+        color = strokeColor,
+        style = Stroke(
+            width = strokeWidth * 2f,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    )
+    
+    // Draw vertices for better visibility and interaction
+    vertices.forEachIndexed { index, vertex ->
+        val isDraggedVertex = setSquare.draggedVertexIndex == index
+        val vertexRadius = if (isDraggedVertex) 8f else 6f
+        val vertexColor = if (isDraggedVertex) Color.Yellow else strokeColor
+        
+        drawCircle(
+            color = Color.White,
+            radius = vertexRadius + 2f,
+            center = Offset(vertex.x, vertex.y)
+        )
+        drawCircle(
+            color = vertexColor,
+            radius = vertexRadius,
+            center = Offset(vertex.x, vertex.y)
+        )
+        
+        // Draw a small circle inside to indicate it's draggable
+        drawCircle(
+            color = Color.Black,
+            radius = 2f,
+            center = Offset(vertex.x, vertex.y)
+        )
+    }
+    
+    // Draw angle selection button in the center with settings icon
+    val center = Offset(setSquare.center.x, setSquare.center.y)
+    val buttonRadius = 30f
+    
+    // Button background (circular for settings icon)
+    val buttonRect = androidx.compose.ui.geometry.Rect(
+        center.x - buttonRadius,
+        center.y - buttonRadius,
+        center.x + buttonRadius,
+        center.y + buttonRadius
+    )
+    
+    // Draw button background
+    drawCircle(
+        color = Color.White,
+        radius = buttonRadius,
+        center = center
+    )
+    
+    // Draw button border
+    drawCircle(
+        color = Color.Black,
+        radius = buttonRadius,
+        center = center,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+    )
+    
+    // Draw settings icon using Compose drawing functions
+    val iconSize = buttonRadius * 0.8f // Make icon 80% of button size (larger)
+    val gearRadius = iconSize * 0.4f
+    val innerRadius = gearRadius * 0.5f
+    
+    // Draw outer gear circle
+    drawCircle(
+        color = Color.Black,
+        radius = gearRadius,
+        center = center,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f)
+    )
+    
+    // Draw inner circle
+    drawCircle(
+        color = Color.Black,
+        radius = innerRadius,
+        center = center,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+    )
+    
+    // Draw gear teeth
+    val toothLength = gearRadius * 0.5f
+    for (i in 0..7) {
+        val angle = (i * 45f) * (Math.PI / 180f).toFloat()
+        val startX = center.x + cos(angle) * gearRadius
+        val startY = center.y + sin(angle) * gearRadius
+        val endX = center.x + cos(angle) * (gearRadius + toothLength)
+        val endY = center.y + sin(angle) * (gearRadius + toothLength)
+        
+        drawLine(
+            color = Color.Black,
+            start = Offset(startX, startY),
+            end = Offset(endX, endY),
+            strokeWidth = 3f
+        )
+    }
+}
+
+/**
+ * Check if a point is near the set square angle button
+ */
+private fun isPointNearSetSquareButton(point: Point, setSquare: SetSquareTool): Boolean {
+    val center = setSquare.center
+    val buttonRadius = 30f
+
+    // Calculate distance from point to center
+    val distance = kotlin.math.sqrt(
+        (point.x - center.x).pow(2) + (point.y - center.y).pow(2)
+    )
+
+    val isInside = distance <= buttonRadius
+
+    println("DEBUG: Button detection - Point $point, center: $center, radius: $buttonRadius, distance: $distance, inside: $isInside")
+    return isInside
+}
+
+/**
+ * Check if a point is inside the set square triangle
+ */
+private fun isPointInsideSetSquare(point: Point, setSquare: SetSquareTool): Boolean {
+    val vertices = setSquare.getVertices()
+    if (vertices.size != 3) return false
+    
+    val p1 = vertices[0]
+    val p2 = vertices[1]
+    val p3 = vertices[2]
+    
+    // Use barycentric coordinates to check if point is inside triangle
+    val denom = (p2.y - p3.y) * (p1.x - p3.x) + (p3.x - p2.x) * (p1.y - p3.y)
+    if (abs(denom) < 0.001f) return false // Degenerate triangle
+    
+    val a = ((p2.y - p3.y) * (point.x - p3.x) + (p3.x - p2.x) * (point.y - p3.y)) / denom
+    val b = ((p3.y - p1.y) * (point.x - p3.x) + (p1.x - p3.x) * (point.y - p3.y)) / denom
+    val c = 1f - a - b
+    
+    return a >= 0f && b >= 0f && c >= 0f
+}
+

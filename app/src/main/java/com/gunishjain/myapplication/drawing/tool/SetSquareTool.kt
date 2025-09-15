@@ -19,6 +19,8 @@ data class SetSquareTool(
     val isVisible: Boolean = false,
     val isDragging: Boolean = false,
     val isRotating: Boolean = false,
+    val isResizing: Boolean = false,
+    val draggedVertexIndex: Int = -1, // Which vertex is being dragged (-1 = none)
     val color: Color = Color.Green,
     val strokeWidth: Float = 2f
 ) {
@@ -127,6 +129,76 @@ data class SetSquareTool(
         return edges.any { (start, end) ->
             distanceToLineSegment(point, start, end) <= threshold
         }
+    }
+    
+    /**
+     * Check if a point is near any vertex of the set square
+     */
+    fun isPointNearVertex(point: Point, threshold: Float = 40f): Int {
+        val vertices = getVertices()
+        println("DEBUG: SetSquareTool - Checking vertex detection for point: $point, threshold: $threshold")
+        vertices.forEachIndexed { index, vertex ->
+            val distance = sqrt((point.x - vertex.x).pow(2) + (point.y - vertex.y).pow(2))
+            println("DEBUG: SetSquareTool - Vertex $index at $vertex, distance: $distance")
+            if (distance <= threshold) {
+                println("DEBUG: SetSquareTool - Found vertex $index within threshold")
+                return index
+            }
+        }
+        println("DEBUG: SetSquareTool - No vertex found within threshold")
+        return -1
+    }
+    
+    /**
+     * Resize the set square by dragging a vertex
+     */
+    fun resizeByVertex(vertexIndex: Int, newPosition: Point): SetSquareTool {
+        if (vertexIndex < 0 || vertexIndex >= 3) return this
+        
+        val vertices = getVertices()
+        val draggedVertex = vertices[vertexIndex]
+        
+        // Calculate the distance from center to the new position
+        val newDistance = sqrt((newPosition.x - center.x).pow(2) + (newPosition.y - center.y).pow(2))
+        
+        // Calculate the scale factor based on the original distance
+        val originalDistance = sqrt((draggedVertex.x - center.x).pow(2) + (draggedVertex.y - center.y).pow(2))
+        val scaleFactor = if (originalDistance > 0) newDistance / originalDistance else 1f
+        
+        // Apply minimum and maximum size constraints
+        val newSize = (size * scaleFactor).coerceIn(50f, 300f)
+        
+        return copy(size = newSize)
+    }
+    
+    /**
+     * Start resizing by dragging a vertex
+     */
+    fun startResizing(vertexIndex: Int): SetSquareTool {
+        return copy(
+            isResizing = true,
+            draggedVertexIndex = vertexIndex
+        )
+    }
+    
+    /**
+     * Stop resizing
+     */
+    fun stopResizing(): SetSquareTool {
+        return copy(
+            isResizing = false,
+            draggedVertexIndex = -1
+        )
+    }
+    
+    /**
+     * Reset the resizing state (useful when switching between vertices)
+     */
+    fun resetResizingState(): SetSquareTool {
+        return copy(
+            isResizing = false,
+            draggedVertexIndex = -1
+        )
     }
     
     /**
