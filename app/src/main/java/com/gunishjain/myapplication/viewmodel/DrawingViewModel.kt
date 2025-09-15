@@ -2,7 +2,6 @@ package com.gunishjain.myapplication.viewmodel
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.ViewModel
 import com.gunishjain.myapplication.data.DrawingAction
 import com.gunishjain.myapplication.data.DrawingState
@@ -13,9 +12,7 @@ import com.gunishjain.myapplication.drawing.tool.ProtractorTool
 import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.SetSquareTool
 import com.gunishjain.myapplication.drawing.tool.SetSquareVariant
-import com.gunishjain.myapplication.model.DrawingElement
 import com.gunishjain.myapplication.model.DrawingTool
-import com.gunishjain.myapplication.model.Point
 
 /**
  * ViewModel for managing drawing state and actions

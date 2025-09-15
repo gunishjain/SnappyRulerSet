@@ -13,8 +13,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import kotlin.math.cos
 import kotlin.math.sin
 import com.gunishjain.myapplication.data.DrawingAction
@@ -24,9 +22,7 @@ import com.gunishjain.myapplication.drawing.tool.RulerTool
 import com.gunishjain.myapplication.drawing.tool.CompassTool
 import com.gunishjain.myapplication.drawing.tool.ProtractorTool
 import com.gunishjain.myapplication.drawing.tool.SetSquareTool
-import com.gunishjain.myapplication.drawing.tool.SetSquareVariant
 import com.gunishjain.myapplication.model.*
-import kotlinx.coroutines.delay
 import kotlin.math.*
 
 
@@ -338,6 +334,10 @@ fun DrawingCanvas(
                         if (currentSetSquareState != null && isPointInsideSetSquare(point, currentSetSquareState)) {
                             println("DEBUG: DrawingCanvas - Long press on set square - hiding it")
                             onAction(DrawingAction.HideSetSquare)
+                        } else {
+                            // Long press on empty canvas area - toggle snap behavior
+                            println("DEBUG: DrawingCanvas - Long press on empty canvas - toggling snap")
+                            onAction(DrawingAction.ToggleSnap(!state.snapEnabled))
                         }
                     }
                 )
