@@ -4,6 +4,19 @@ SnappyRulerSet is an Android drawing application focused on precise and intuitiv
 
 The app is implemented using **Kotlin and Jetpack Compose**, with modular architecture separating rendering, interaction, and data persistence layers. Snapping behavior adapts dynamically with zoom level and prioritizes nearest snap targets with clear visual cues. The app is **offline-first**, requiring no network connectivity.
 
+
+> **Note:** [Thought Process and Journey for the project](https://docs.google.com/document/d/1teMZuxwTR-Xr0H8pyQ_Xm7WwEowOqEnmHmjIxG5T3Uo/edit?usp=sharing)
+
+## Table of Contents
+
+- [Major Highlights](#major-highlights)
+- [Features Implemented](#features-implemented)
+- [Documentation References](#documentation-references)
+- [Core Components](#core-components)
+- [How to Run the Project](#how-to-run-the-project)
+- [Complete Project Structure](#complete-project-structure)
+- [Working Demo](#working-demo)
+
 ## Major Highlights
 
 - MVVM Architecture
@@ -26,32 +39,14 @@ The app is implemented using **Kotlin and Jetpack Compose**, with modular archit
 - Undo and Redo Support
 - Precision Hud for selected Tool
   
-## Documentation References:
-- Jetpack Compose Graphics Overview
-```
-https://developer.android.com/develop/ui/compose/graphics/draw/overview
-```
-- Drawing Shapes
-```
-https://developer.android.com/develop/ui/compose/graphics/draw/shapes
-```
-- Graphic Modifiers
-```
-https://developer.android.com/develop/ui/compose/graphics/draw/modifiers
-```
-- Multi Touch Input
-```
-https://developer.android.com/develop/ui/compose/touch-input/pointer-input/multi-touch
-```
-- Intrinsic Measurements 
-```
-https://developer.android.com/develop/ui/compose/layouts/intrinsic-measurements
-```
-- Dragging, Touch Inputs
-```
-https://developer.android.com/develop/ui/compose/touch-input/pointer-input/drag-swipe-fling
+## Documentation References
 
-```
+- [Jetpack Compose Graphics Overview](https://developer.android.com/develop/ui/compose/graphics/draw/overview)
+- [Drawing Shapes](https://developer.android.com/develop/ui/compose/graphics/draw/shapes)
+- [Graphic Modifiers](https://developer.android.com/develop/ui/compose/graphics/draw/modifiers)
+- [Multi Touch Input](https://developer.android.com/develop/ui/compose/touch-input/pointer-input/multi-touch)
+- [Intrinsic Measurements](https://developer.android.com/develop/ui/compose/layouts/intrinsic-measurements)
+- [Dragging, Touch Inputs](https://developer.android.com/develop/ui/compose/touch-input/pointer-input/drag-swipe-fling)
 
 ## Core Components
 
@@ -117,37 +112,62 @@ class DrawingViewModel : ViewModel() {
 
 ## How to Run the Project
 
-- Clone the Repository:
-```
-https://github.com/gunishjain/SnappyRulerSet.git
-cd SnappyRulerSet
-```
-- Make Sure to check AGP Version, to avoid compose compiler sync issues,this project uses AGP version 8.9.1. 
-- Build and run the Project
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/gunishjain/SnappyRulerSet.git
+   cd SnappyRulerSet
+   ```
+
+2. **Check AGP Version:** Make sure to check AGP Version to avoid compose compiler sync issues. This project uses AGP version 8.9.1.
+
+3. **Build and run the Project:**
+   ```bash
+   ./gradlew assembleDebug
+   ```
 
 ## Complete Project Structure
 
 ```
-            ├───data
-            │   ├───api
-            │   ├───model
-            │   └───repository
-            ├───di
-            │   └───module
-            ├───navigation
-            ├───ui
-            │   ├───base
-            │   ├───newslist
-            │   ├───search
-            │   ├───selections
-            │   ├───sources
-            │   ├───theme
-            │   └───topheadlines
-            └───utils
-                NewsApplication.kt
+SnappyRulerSet/
+├── app/
+│   ├── src/main/java/com/gunishjain/myapplication/
+│   │   ├── data/                          
+│   │   │   ├── DrawingState.kt          
+│   │   │   └── UndoRedoManager.kt        
+│   │   ├── drawing/                      
+│   │   │   ├── tool/                     
+│   │   │   │   ├── CompassTool.kt        
+│   │   │   │   ├── ProtractorTool.kt     
+│   │   │   │   ├── RulerTool.kt          
+│   │   │   │   └── SetSquareTool.kt      
+│   │   │   ├── PrecisionHUD.kt           
+│   │   │   └── SnapEngine.kt             
+│   │   ├── export/                        
+│   │   │   ├── BitmapExporter.kt         
+│   │   │   └── ImageExporter.kt          
+│   │   ├── model/                         
+│   │   │   ├── DrawingTool.kt            
+│   │   │   ├── GeometryTypes.kt          
+│   │   │   └── SnapTarget.kt             
+│   │   ├── ui/                           
+│   │   │   ├── theme/                   
+│   │   │   │   ├── Color.kt             
+│   │   │   │   ├── Theme.kt              
+│   │   │   │   └── Type.kt               
+│   │   │   ├── DrawingCanvas.kt          
+│   │   │   ├── ExportDialog.kt           
+│   │   │   └── ToolOverlay.kt            
+│   │   ├── utils/                        
+│   │   │   ├── HapticFeedbackUtil.kt     
+│   │   │   └── PermissionHandler.kt      
+│   │   ├── viewmodel/                    
+│   │   │   └── DrawingViewModel.kt       
+│   │   └── MainActivity.kt               
 
 ```
 
-### Working Demo
+## Working Demo
 
-![](https://github.com/gunish
+| Demo 1 | Demo 2 |
+|--------|--------|
+| ![SnappyTool Demo 1](assets/SnappyToolDemo1.gif) | ![SnappyTool Demo 2](assets/SnappyToolDemo2.gif) |
