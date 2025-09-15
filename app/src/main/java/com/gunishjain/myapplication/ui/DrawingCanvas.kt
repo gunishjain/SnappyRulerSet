@@ -45,11 +45,7 @@ fun DrawingCanvas(
     LaunchedEffect(state.currentTool) {
         println("DEBUG: DrawingCanvas - Received state with tool: ${state.currentTool.name}")
     }
-    // Track double tap for ruler line creation
-    var lastTapTime by remember { mutableStateOf(0L) }
-    val doubleTapThreshold = 300L // milliseconds
-    val context = LocalContext.current
-    val density = LocalDensity.current
+
     var currentPath by remember { mutableStateOf<Path?>(null) }
     var currentPathPoints by remember { mutableStateOf<List<Point>>(emptyList()) }
     var rulerStartPoint by remember { mutableStateOf<Point?>(null) }
@@ -252,10 +248,15 @@ fun DrawingCanvas(
                                     println("DEBUG: DrawingCanvas - Checking interactions for point: $finalPoint")
                                     println("DEBUG: DrawingCanvas - SetSquare center: ${currentSetSquareState.center}")
                                     println("DEBUG: DrawingCanvas - Current isResizing: ${currentSetSquareState.isResizing}")
+                                    println("DEBUG: DrawingCanvas - SetSquare isVisible: ${currentSetSquareState.isVisible}")
                                     
                                     // Check if tap is on a vertex for resizing
                                     val vertexIndex = currentSetSquareState.isPointNearVertex(finalPoint, 40f)
                                     println("DEBUG: DrawingCanvas - Vertex index: $vertexIndex")
+                                    
+                                    // Check button detection
+                                    val isButtonTap = isPointNearSetSquareButton(finalPoint, currentSetSquareState)
+                                    println("DEBUG: DrawingCanvas - Button tap detected: $isButtonTap")
                                     
                                     if (vertexIndex >= 0) {
                                         // If we were already resizing a different vertex, end that first

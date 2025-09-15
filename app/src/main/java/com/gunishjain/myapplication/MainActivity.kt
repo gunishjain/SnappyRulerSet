@@ -31,10 +31,8 @@ import com.gunishjain.myapplication.ui.ExportDialog
 import com.gunishjain.myapplication.ui.ToolOverlay
 import com.gunishjain.myapplication.ui.theme.SnappyRulerSetTheme
 import com.gunishjain.myapplication.utils.HapticFeedbackUtil
-import com.gunishjain.myapplication.utils.PermissionHandler
 import com.gunishjain.myapplication.utils.rememberPermissionHandler
 import com.gunishjain.myapplication.viewmodel.DrawingViewModel
-import kotlinx.coroutines.flow.collect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

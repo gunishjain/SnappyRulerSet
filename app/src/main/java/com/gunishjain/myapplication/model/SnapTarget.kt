@@ -37,14 +37,6 @@ enum class SnapTargetType {
     MIDPOINT,       // Middle of a line
     INTERSECTION,   // Intersection of two lines
     CENTER,         // Center of a circle
-    
-    // Angle snapping
-    ANGLE,          // Common angle (0°, 30°, 45°, 60°, 90°, etc.)
-    
-    // Extension points
-    EXTENSION,      // Extension of a line
-    PERPENDICULAR,  // Perpendicular to a line
-    PARALLEL        // Parallel to a line
 }
 
 /**
